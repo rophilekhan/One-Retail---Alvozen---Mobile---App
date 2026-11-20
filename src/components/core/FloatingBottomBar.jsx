@@ -1,14 +1,15 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Path, Circle } from 'react-native-svg';
+import Svg, { Path, Rect, Circle } from 'react-native-svg';
 import { useTheme } from '../../theme/index.js';
-import { scale, verticalScale } from '../../theme/responsive.js';
+import { scale, verticalScale, scaleFont } from '../../theme/responsive.js';
 import AppText from './AppText.jsx';
 
 /**
  * FloatingBottomBar - OneRetail Floating Pill Navigation Bar
- * Exact Figma dimensions: 290x64 pill container + 8px gap + 64x64 FAB button (width 362pt)
+ * Exact OneRx & Figma dimensions: 290x64 pill container + 8px gap + 64x64 FAB button (width 362pt)
+ * Center FAB is dedicated to digital prescription QR scanning.
  *
  * @param {Object} props
  * @param {string} [props.activeTab='Home']
@@ -34,7 +35,7 @@ export const FloatingBottomBar = ({
   const fabBorder = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)';
   const fabShadowColor = isDark ? colors.brand?.primary || '#009BA9' : '#0F4761';
 
-  // Default OneRetail Navigation Items
+  // Default OneRetail Navigation Items matching OneRx exact SVGs
   const DEFAULT_ITEMS = [
     {
       id: 'Home',
@@ -56,19 +57,29 @@ export const FloatingBottomBar = ({
       ),
     },
     {
-      id: 'Inventory',
-      label: 'Inventory',
+      id: 'TradeSchemes',
+      label: 'Schemes',
       icon: (color) => (
         <Svg width={scale(22)} height={scale(22)} viewBox="0 0 24 24" fill="none">
           <Path
-            d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"
-            stroke={color}
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+            d="M16.75 3.56V2C16.75 1.59 16.41 1.25 16 1.25s-.75.34-.75.75v1.5H8.75V2C8.75 1.59 8.41 1.25 8 1.25s-.75.34-.75.75v1.56C4.55 3.81 3.24 5.42 3.04 7.81c-.02.29.22.53.5.53h16.92c.29 0 .53-.25.5-.53-.2-2.39-1.51-4-4.21-4.25Z"
+            fill={color}
           />
           <Path
-            d="m3.3 7 8.7 5 8.7-5M12 22V12"
+            opacity={0.4}
+            d="M20 9.84c.55 0 1 .45 1 1v6.16c0 3-1.5 5-5 5H8c-3.5 0-5-2-5-5V10.84c0-.55.45-1 1-1h16Z"
+            fill={color}
+          />
+        </Svg>
+      ),
+    },
+    {
+      id: 'ImpactWallet',
+      label: 'Impact',
+      icon: (color) => (
+        <Svg width={scale(22)} height={scale(22)} viewBox="0 0 24 24" fill="none">
+          <Path
+            d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
             stroke={color}
             strokeWidth="1.8"
             strokeLinecap="round"
@@ -78,30 +89,8 @@ export const FloatingBottomBar = ({
       ),
     },
     {
-      id: 'Orders',
-      label: 'Orders',
-      icon: (color) => (
-        <Svg width={scale(22)} height={scale(22)} viewBox="0 0 24 24" fill="none">
-          <Path
-            d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"
-            stroke={color}
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          <Path
-            d="M15 2H9a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1ZM9 12h6M9 16h4"
-            stroke={color}
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </Svg>
-      ),
-    },
-    {
-      id: 'More',
-      label: 'More',
+      id: 'Settings',
+      label: 'Settings',
       icon: (color) => (
         <Svg width={scale(22)} height={scale(22)} viewBox="0 0 24 24" fill="none">
           <Circle cx="5" cy="12" r="2.2" fill={color} />
@@ -173,7 +162,7 @@ export const FloatingBottomBar = ({
           })}
         </View>
 
-        {/* Action Button (+) (64x64 in Figma) */}
+        {/* Center Rx QR Scanner Action Button (64x64 in Figma) */}
         <TouchableOpacity
           style={[
             styles.fab,
@@ -185,17 +174,20 @@ export const FloatingBottomBar = ({
           ]}
           activeOpacity={0.85}
           accessibilityRole="button"
-          accessibilityLabel="Primary Action"
+          accessibilityLabel="Scan Prescription QR"
           onPress={() => onFabPress && onFabPress()}
         >
-          <Svg width={scale(24)} height={scale(24)} viewBox="0 0 24 24" fill="none">
+          {/* Rx QR Scanner Reticle SVG Vector */}
+          <Svg width={scale(26)} height={scale(26)} viewBox="0 0 24 24" fill="none">
             <Path
-              d="M12 5V19M5 12H19"
+              d="M4 8V6a2 2 0 0 1 2-2h2M4 16v2a2 2 0 0 0 2 2h2M16 4h2a2 2 0 0 1 2 2v2M16 20h2a2 2 0 0 0 2-2v-2"
               stroke="#FFFFFF"
               strokeWidth="2.2"
               strokeLinecap="round"
               strokeLinejoin="round"
             />
+            <Rect x="8" y="8" width="8" height="8" rx="1.5" stroke="#FFFFFF" strokeWidth="1.8" />
+            <Circle cx="12" cy="12" r="1.5" fill="#FFFFFF" />
           </Svg>
         </TouchableOpacity>
       </View>
@@ -246,18 +238,20 @@ const styles = StyleSheet.create({
     marginBottom: verticalScale(2),
   },
   navLabel: {
+    fontSize: scaleFont(12),
+    lineHeight: scaleFont(16),
     textAlign: 'center',
   },
   fab: {
     width: scale(64),
     height: scale(64),
-    borderRadius: scale(32),
+    borderRadius: scale(200),
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowOffset: { width: 0, height: verticalScale(4) },
-    shadowOpacity: 0.28,
-    shadowRadius: scale(12),
+    shadowOffset: { width: 0, height: verticalScale(6) },
+    shadowOpacity: 0.35,
+    shadowRadius: scale(14),
     elevation: 8,
   },
 });

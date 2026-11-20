@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 import axios from 'axios';
 import DeviceInfo from 'react-native-device-info';
-import { storageService } from './storage.js';
+import secureStorage from './secureStorage.js';
 import { useAuthStore } from '../store/useAuthStore.js';
 import { AppToast } from '../components/core/AppToast.jsx';
 import { ENDPOINTS } from './endpoints.js';
@@ -167,7 +167,7 @@ export const axiosInstance = axios.create({
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
-    'X-App-Platform': 'React-Native',
+    'X-App-Platform': 'OneRetail-Mobile',
   },
 });
 
@@ -176,6 +176,7 @@ axiosInstance.interceptors.request.use(
   async (config) => {
     try {
       config.headers['X-OneRetail-Platform'] = PLATFORM_NAME;
+      config.headers['X-App-Platform'] = 'OneRetail-Mobile';
 
       try {
         config.headers['X-OneRetail-App-Version'] = DeviceInfo.getVersion();
@@ -187,13 +188,14 @@ axiosInstance.interceptors.request.use(
         try {
           cachedDeviceId = await DeviceInfo.getUniqueId();
         } catch {
-          cachedDeviceId = await storageService.getDeviceId();
+          cachedDeviceId = 'device_' + Platform.OS + '_' + Math.random().toString(36).substring(2, 9);
         }
       }
+      config.headers['X-Device-Id'] = cachedDeviceId;
       config.headers['X-OneRetail-Device-Id'] = cachedDeviceId;
 
       // Token Attachment
-      const token = useAuthStore.getState().token || (await storageService.getToken());
+      const token = useAuthStore.getState().token || (await secureStorage.getToken());
       if (token) {
         const bearerVal = `Bearer ${token}`;
         if (config.headers?.set) {
@@ -292,7 +294,7 @@ axiosInstance.interceptors.response.use(
       isRefreshing = true;
 
       const authState = useAuthStore.getState();
-      const refreshToken = authState.refreshToken || (await storageService.getRefreshToken());
+      const refreshToken = authState.refreshToken || (await secureStorage.getRefreshToken());
 
       if (!refreshToken) {
         isRefreshing = false;
@@ -310,6 +312,7 @@ axiosInstance.interceptors.response.use(
             headers: {
               'Content-Type': 'application/json',
               'Accept': 'application/json',
+              'X-App-Platform': 'OneRetail-Mobile',
               'X-OneRetail-Platform': PLATFORM_NAME,
             },
             timeout: 15000,

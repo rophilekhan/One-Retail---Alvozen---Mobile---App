@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
-import Svg, { Path, Circle, Rect } from 'react-native-svg';
 import {
   AppScreenContainer,
   AppText,
@@ -8,55 +7,64 @@ import {
   AppBadge,
   AppButton,
   MetricIconDisc,
+  AppToast,
 } from '../../components/core/index.js';
 import { useTheme } from '../../theme/index.js';
-import { scale, verticalScale, scaleFont } from '../../theme/responsive.js';
+import { scale, verticalScale } from '../../theme/responsive.js';
 import { usePharmacyStore } from '../../store/usePharmacyStore.js';
 import { useAuthStore } from '../../store/useAuthStore.js';
 import { PermissionGuard } from '../../components/common/PermissionGuard.jsx';
-
-const TOP_BRANDS_TERRITORY = [
-  { rank: '#1', name: 'Panadol 500mg', category: 'Analgesic', share: '24.2%', progress: 0.95 },
-  { rank: '#2', name: 'Augmentin 625mg', category: 'Antibiotic', share: '18.7%', progress: 0.76 },
-  { rank: '#3', name: 'Risek 20mg', category: 'Anti-Ulcerant', share: '14.5%', progress: 0.58 },
-  { rank: '#4', name: 'Arinac Forte', category: 'Anti-Histamine', share: '9.8%', progress: 0.39 },
-  { rank: '#5', name: 'Nexum 40mg', category: 'PPI Gastro', share: '7.6%', progress: 0.30 },
-];
-
-const WEEKLY_SCAN_TREND = [
-  { day: 'M', scans: 28 },
-  { day: 'T', scans: 34 },
-  { day: 'W', scans: 31 },
-  { day: 'T', scans: 42 },
-  { day: 'F', scans: 39 },
-  { day: 'S', scans: 45 },
-  { day: 'S', scans: 38 },
-];
+import { PERMISSIONS } from '../../store/useStaffStore.js';
+import {
+  PrescriptionsPerDayWidget,
+  TopBrandsTerritoryCard,
+  TerritoryBenchmarkingCard,
+} from '../../components/home/index.js';
+import {
+  TierGemIcon,
+  PillIcon,
+  PillsMedicineIcon,
+  TransferArrowsIconSvg,
+  CalendarIcon,
+  HospitalClinicIcon,
+  MapPinIcon,
+} from '../../assets/vectors/index.js';
 
 /**
  * HomeDashboardScreen - OneRetail Main Dashboard
  * Mandated by ONERETAIL_PRD.md:
- * - Territory header (Default Territory / Karachi South Central)
+ * - Territory header showing Pharmacy Name, Territory badge, and quick nav to Profile & Staff
+ * - Quick actions: Scan Rx QR & Upload Closing Data (for non-integrated POS)
  * - Prescriptions per day analytics
  * - Top Brands in Territory & Sales Share
  * - Territory Benchmarking
- * - Quick Action Buttons (Scan Rx, Trade Schemes, Distributor Connect, Impact & Wallet)
+ * - Ecosystem quick action links
+ * Features exact OneRx vector assets (Zero emoji/text placeholders).
  *
  * @param {Object} props
  * @param {Object} props.navigation
  */
 export const HomeDashboardScreen = ({ navigation }) => {
-  const { colors, spacing, isDark } = useTheme();
+  const { colors, spacing } = useTheme();
   const pharmacy = usePharmacyStore();
   const user = useAuthStore((s) => s.user);
 
   const pharmacyName = pharmacy.name || user?.name || 'City Meds Pharmacy';
-  const territoryName = pharmacy.territory?.name || 'Karachi South Central';
+  const territoryName = pharmacy.territory?.name || 'PECHS / Tariq Road, Karachi';
   const piiTier = pharmacy.piiTier || 'Key Account';
+  const isSystemIntegrated = pharmacy.isSystemIntegrated || false;
+
+  const handleUploadClosingData = () => {
+    AppToast.show({
+      title: 'Daily Closing Data Uploaded',
+      message: 'Sales off-take synced. +10 PII Points added to your daily sharing score.',
+      type: 'success',
+    });
+  };
 
   return (
     <AppScreenContainer scrollable={true} withAmbientGlow={true} withBottomNavClearance={true}>
-      {/* Territory & Pharmacy Header */}
+      {/* 1. Territory & Pharmacy Header */}
       <View style={styles.screenHeader}>
         <TouchableOpacity
           activeOpacity={0.7}
@@ -69,204 +77,114 @@ export const HomeDashboardScreen = ({ navigation }) => {
             {pharmacyName}
           </AppText>
           <View style={styles.territoryRow}>
-            <Svg width={scale(14)} height={scale(14)} viewBox="0 0 24 24" fill="none">
-              <Path
-                d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"
-                stroke={colors.brand?.primary}
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <Circle cx="12" cy="9" r="2.5" fill={colors.brand?.primary} />
-            </Svg>
+            <MapPinIcon size={14} color={colors.brand?.primary} />
             <AppText variant="caption" colorType="muted" style={{ marginLeft: 4 }}>
               Territory: {territoryName} • <AppText variant="caption" colorType="brand">Profile &gt;</AppText>
             </AppText>
           </View>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          activeOpacity={0.7}
-          onPress={() => navigation.navigate('PharmacyProfile')}
-        >
-          <AppBadge label={piiTier} variant="brand" />
-        </TouchableOpacity>
+        <View style={styles.headerBadgesRow}>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate('StaffList')}
+            style={{ marginRight: 6 }}
+          >
+            <AppBadge label="Staff" variant="neutral" size="sm" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate('PharmacyProfile')}
+            style={styles.tierHeaderPill}
+          >
+            <TierGemIcon tier={piiTier} size={20} isApex={false} style={{ marginRight: 4 }} />
+            <AppBadge label={piiTier} variant="brand" />
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {/* Prescriptions Today Analytics Card */}
-      <GlassCard style={styles.metricCard}>
-        <View style={styles.metricRow}>
-          <MetricIconDisc variant="teal" size={50} marginRight={12}>
-            <Svg width={scale(24)} height={scale(24)} viewBox="0 0 24 24" fill="none">
-              <Path
-                d="M9 11l3 3L22 4"
-                stroke={colors.text.inverse || '#FFFFFF'}
-                strokeWidth="2.4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+      {/* 2. Quick Action Bar */}
+      <View style={styles.quickActionsContainer}>
+        {/* Scan Prescription QR */}
+        <PermissionGuard
+          permission={PERMISSIONS.SCAN_QR_DEVICE}
+          fallback={
+            <GlassCard style={styles.actionCard}>
+              <AppText variant="caption" colorType="muted">
+                Scan QR restricted for your role. Contact Pharmacy Admin.
+              </AppText>
+            </GlassCard>
+          }
+        >
+          <GlassCard style={styles.actionCard}>
+            <View style={styles.actionHeader}>
+              <MetricIconDisc variant="teal" size={38} marginRight={10}>
+                <PillsMedicineIcon size={22} color="#FFFFFF" />
+              </MetricIconDisc>
+              <View style={{ flex: 1 }}>
+                <View style={styles.actionTitleRow}>
+                  <AppText variant="titleMedium" colorType="primary">
+                    Scan Prescription QR
+                  </AppText>
+                  <AppBadge label="+10 Pts" variant="accent" size="sm" />
+                </View>
+                <AppText variant="caption" colorType="muted" style={{ marginTop: 2 }}>
+                  Validate patient digital Rx, generic mapping & reciprocal stocks
+                </AppText>
+              </View>
+            </View>
+            <View style={{ marginTop: verticalScale(10) }}>
+              <AppButton
+                variant="primary"
+                size="md"
+                title="Open Prescription QR Scanner"
+                onPress={() => navigation.navigate('QRScanner')}
               />
-              <Path
-                d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"
-                stroke={colors.text.inverse || '#FFFFFF'}
-                strokeWidth="2.4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </Svg>
-          </MetricIconDisc>
+            </View>
+          </GlassCard>
+        </PermissionGuard>
 
-          <View style={{ flex: 1 }}>
-            <AppText variant="caption" colorType="muted">Prescriptions Per Day</AppText>
-            <AppText variant="headlineMedium" colorType="primary">
-              38 <AppText variant="bodyMedium" colorType="brand">Rx Scanned</AppText>
-            </AppText>
-          </View>
-
-          <View style={{ alignItems: 'flex-end' }}>
-            <AppBadge label="+14% vs yesterday" variant="success" />
-            <AppText variant="caption" colorType="muted" style={{ marginTop: 4 }}>
-              94.7% Dispensed
-            </AppText>
-          </View>
-        </View>
-
-        {/* 7-Day Mini Bar Trend */}
-        <View style={styles.trendRow}>
-          {WEEKLY_SCAN_TREND.map((item, idx) => (
-            <View key={idx} style={styles.trendCol}>
-              <View
-                style={[
-                  styles.trendBarTrack,
-                  { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' },
-                ]}
-              >
-                <View
-                  style={[
-                    styles.trendBarFill,
-                    {
-                      height: `${(item.scans / 50) * 100}%`,
-                      backgroundColor: idx === 6 ? colors.brand?.primary : colors.brand?.secondary,
-                    },
-                  ]}
+        {/* Upload Closing Data (Displayed when !isSystemIntegrated) */}
+        {!isSystemIntegrated && (
+          <PermissionGuard
+            permission={PERMISSIONS.UPLOAD_CLOSING_DATA}
+            fallback={null}
+          >
+            <GlassCard style={styles.actionCard}>
+              <View style={styles.actionHeader}>
+                <MetricIconDisc variant="purple" size={38} marginRight={10}>
+                  <TransferArrowsIconSvg size={20} color="#FFFFFF" />
+                </MetricIconDisc>
+                <View style={{ flex: 1 }}>
+                  <AppText variant="titleMedium" colorType="primary">
+                    Upload Daily Closing Data
+                  </AppText>
+                  <AppText variant="caption" colorType="muted">
+                    Manual pharmacy off-take sync (+10 PII Points daily)
+                  </AppText>
+                </View>
+                <AppButton
+                  variant="secondary"
+                  size="xs"
+                  title="Upload CSV / Excel"
+                  onPress={handleUploadClosingData}
                 />
               </View>
-              <AppText variant="caption" colorType={idx === 6 ? 'brand' : 'muted'} style={{ marginTop: 4 }}>
-                {item.day}
-              </AppText>
-            </View>
-          ))}
-        </View>
-      </GlassCard>
+            </GlassCard>
+          </PermissionGuard>
+        )}
+      </View>
 
-      {/* Prescription Scanning Quick Trigger */}
-      <PermissionGuard
-        permission="SCAN_QR_DEVICE"
-        fallback={
-          <GlassCard style={styles.metricCard}>
-            <AppText variant="caption" colorType="muted">
-              Device QR Scanning restricted for your staff role. Contact your Pharmacy Admin.
-            </AppText>
-          </GlassCard>
-        }
-      >
-        <GlassCard style={styles.metricCard}>
-          <View style={{ width: '100%' }}>
-            <View style={styles.cardHeaderWithBadge}>
-              <AppText variant="titleMedium" colorType="primary">Digital Prescription Scanning</AppText>
-              <AppBadge label="+10 PII Pts" variant="accent" />
-            </View>
-            <AppText variant="caption" colorType="muted" style={{ marginVertical: 6 }}>
-              Scan patient Rx QR to confirm dispense, check nearby pharmacy stocks & view alternate brands.
-            </AppText>
-            <AppButton
-              variant="primary"
-              size="md"
-              title="Open QR Scanner (Camera / Plug-in)"
-              onPress={() => navigation.navigate('QRScanner')}
-            />
-          </View>
-        </GlassCard>
-      </PermissionGuard>
+      {/* 3. Prescriptions Per Day Analytics */}
+      <PrescriptionsPerDayWidget todayCount={38} weeklyAverage={34} />
 
-      {/* Top Brands in Territory & Share of Sales */}
-      <GlassCard style={styles.metricCard}>
-        <View style={{ width: '100%' }}>
-          <View style={styles.cardHeaderWithBadge}>
-            <View>
-              <AppText variant="titleMedium" colorType="primary">Top Brands in Territory</AppText>
-              <AppText variant="caption" colorType="muted">
-                Territory Market Share & Prescribed Frequency
-              </AppText>
-            </View>
-            <AppBadge label={territoryName} variant="brand" />
-          </View>
+      {/* 4. Top Brands in Territory & Sales Share */}
+      <TopBrandsTerritoryCard territoryName={territoryName} />
 
-          <View style={{ marginTop: verticalScale(8) }}>
-            {TOP_BRANDS_TERRITORY.map((item, idx) => (
-              <View key={idx} style={[styles.brandItem, { borderBottomColor: colors.border?.subtle }]}>
-                <AppText variant="bodyMediumMedium" colorType="brand" style={{ width: scale(28) }}>
-                  {item.rank}
-                </AppText>
-                <View style={{ flex: 1, paddingRight: 8 }}>
-                  <View style={styles.brandTitleRow}>
-                    <AppText variant="bodyMediumMedium" colorType="primary">{item.name}</AppText>
-                    <AppText variant="bodyMediumMedium" colorType="primary">{item.share}</AppText>
-                  </View>
-                  <AppText variant="caption" colorType="muted">{item.category}</AppText>
-                  <View
-                    style={[
-                      styles.shareProgressTrack,
-                      { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' },
-                    ]}
-                  >
-                    <View
-                      style={[
-                        styles.shareProgressFill,
-                        {
-                          width: `${item.progress * 100}%`,
-                          backgroundColor: colors.brand?.primary,
-                        },
-                      ]}
-                    />
-                  </View>
-                </View>
-              </View>
-            ))}
-          </View>
-        </View>
-      </GlassCard>
+      {/* 5. Territory Benchmarking */}
+      <TerritoryBenchmarkingCard territoryName={territoryName} />
 
-      {/* Territory Benchmarking */}
-      <GlassCard style={styles.metricCard}>
-        <View style={{ width: '100%' }}>
-          <AppText variant="titleMedium" colorType="primary">Territory Benchmarking</AppText>
-          <AppText variant="caption" colorType="muted" style={{ marginBottom: 10 }}>
-            Performance comparison against peer pharmacies in {territoryName}
-          </AppText>
-
-          <View style={styles.benchmarkGrid}>
-            <View style={[styles.benchmarkBox, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)', borderColor: colors.border?.subtle }]}>
-              <AppText variant="caption" colorType="muted">Fulfillment Velocity</AppText>
-              <AppText variant="titleMedium" colorType="primary" style={{ marginTop: 2 }}>Top 8%</AppText>
-              <AppBadge label="Leader" variant="success" size="sm" style={{ marginTop: 4 }} />
-            </View>
-
-            <View style={[styles.benchmarkBox, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)', borderColor: colors.border?.subtle }]}>
-              <AppText variant="caption" colorType="muted">Generic Substitution</AppText>
-              <AppText variant="titleMedium" colorType="primary" style={{ marginTop: 2 }}>78%</AppText>
-              <AppText variant="caption" colorType="muted" style={{ marginTop: 4 }}>vs 62% avg</AppText>
-            </View>
-
-            <View style={[styles.benchmarkBox, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)', borderColor: colors.border?.subtle }]}>
-              <AppText variant="caption" colorType="muted">Stock Availability</AppText>
-              <AppText variant="titleMedium" colorType="primary" style={{ marginTop: 2 }}>96.4%</AppText>
-              <AppBadge label="Optimal" variant="brand" size="sm" style={{ marginTop: 4 }} />
-            </View>
-          </View>
-        </View>
-      </GlassCard>
-
-      {/* Ecosystem Quick Actions Grid */}
+      {/* 6. Ecosystem Quick Actions Grid */}
       <View style={styles.actionsGrid}>
         <TouchableOpacity
           style={styles.actionGridItem}
@@ -275,9 +193,7 @@ export const HomeDashboardScreen = ({ navigation }) => {
         >
           <GlassCard style={styles.actionCardInner}>
             <MetricIconDisc variant="purple" size={38} marginRight={8}>
-              <Svg width={scale(18)} height={scale(18)} viewBox="0 0 24 24" fill="none">
-                <Path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </Svg>
+              <CalendarIcon size={18} color="#FFFFFF" />
             </MetricIconDisc>
             <View style={{ flex: 1 }}>
               <AppText variant="bodyMediumMedium" colorType="primary">Trade Schemes</AppText>
@@ -293,10 +209,7 @@ export const HomeDashboardScreen = ({ navigation }) => {
         >
           <GlassCard style={styles.actionCardInner}>
             <MetricIconDisc variant="teal" size={38} marginRight={8}>
-              <Svg width={scale(18)} height={scale(18)} viewBox="0 0 24 24" fill="none">
-                <Path d="M16 16v1a2 2 0 01-2 2H3a2 2 0 01-2-2V7a2 2 0 012-2h11a2 2 0 012 2v1" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                <Path d="M18 8h4a1 1 0 011 1v7a1 1 0 01-1 1h-4" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </Svg>
+              <HospitalClinicIcon size={18} color="#FFFFFF" />
             </MetricIconDisc>
             <View style={{ flex: 1 }}>
               <AppText variant="bodyMediumMedium" colorType="primary">Distributor</AppText>
@@ -323,81 +236,36 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 2,
   },
-  metricCard: {
+  headerBadgesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  tierHeaderPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  quickActionsContainer: {
+    marginVertical: verticalScale(4),
+  },
+  actionCard: {
     width: '100%',
-    marginVertical: verticalScale(6),
+    marginVertical: verticalScale(5),
+    padding: scale(14),
   },
-  metricRow: {
+  actionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     width: '100%',
   },
-  trendRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    marginTop: verticalScale(14),
-    paddingTop: verticalScale(10),
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.06)',
-  },
-  trendCol: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  trendBarTrack: {
-    width: scale(14),
-    height: verticalScale(44),
-    borderRadius: scale(7),
-    justifyContent: 'flex-end',
-    overflow: 'hidden',
-  },
-  trendBarFill: {
-    width: '100%',
-    borderRadius: scale(7),
-  },
-  cardHeaderWithBadge: {
+  actionTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-  },
-  brandItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: verticalScale(7),
-    borderBottomWidth: 1,
-  },
-  brandTitleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  shareProgressTrack: {
-    height: 4,
-    borderRadius: 2,
-    marginTop: 4,
-    overflow: 'hidden',
-  },
-  shareProgressFill: {
-    height: '100%',
-    borderRadius: 2,
-  },
-  benchmarkGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  benchmarkBox: {
-    flex: 1,
-    borderRadius: scale(12),
-    borderWidth: 1,
-    padding: scale(8),
-    marginHorizontal: scale(3),
-    alignItems: 'center',
   },
   actionsGrid: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginVertical: verticalScale(4),
+    marginVertical: verticalScale(6),
   },
   actionGridItem: {
     flex: 1,

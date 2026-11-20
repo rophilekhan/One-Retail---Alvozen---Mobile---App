@@ -1,51 +1,62 @@
 import { create } from 'zustand';
-import { storageService } from '../services/storage.js';
+import secureStorage from '../services/secureStorage.js';
 
 const initialState = {
   user: null,
   token: null,
   refreshToken: null,
-  role: null, // 'ADMIN' | 'STAFF' | null
+  role: null, // 'PHARMACY_ADMIN' | 'STAFF' | null
   isAuthenticated: false,
   isLoading: false,
   isHydrated: false,
 };
 
 /**
+ * Normalizes user role ensuring backwards compatibility between ADMIN and PHARMACY_ADMIN
+ * @param {string|null|undefined} role
+ * @returns {'PHARMACY_ADMIN' | 'STAFF'}
+ */
+const normalizeRole = (role) => {
+  if (role === 'STAFF') return 'STAFF';
+  return 'PHARMACY_ADMIN';
+};
+
+/**
  * useAuthStore - Zustand Authentication & Session Store
- * Hydrates tokens & session from EncryptedStorage.
+ * Hydrates tokens & session from EncryptedStorage via secureStorage.
  */
 export const useAuthStore = create((set, get) => ({
   ...initialState,
 
   /**
-   * Hydrate session from secure encrypted storage on app launch
+   * Hydrate session from secure hardware-backed encrypted storage on app launch
    */
   hydrate: async () => {
     try {
       set({ isLoading: true });
       const [token, refreshToken, user] = await Promise.all([
-        storageService.getToken(),
-        storageService.getRefreshToken(),
-        storageService.getUser(),
+        secureStorage.getToken(),
+        secureStorage.getRefreshToken(),
+        secureStorage.getUser(),
       ]);
 
       if (token && user) {
-        const role = user.role || 'ADMIN';
+        const role = normalizeRole(user.role);
         set({
           token,
           refreshToken,
-          user,
+          user: { ...user, role },
           role,
           isAuthenticated: true,
           isHydrated: true,
           isLoading: false,
         });
 
-        // Hydrate staff permissions if staff
-        if (role === 'STAFF' && Array.isArray(user.permissions)) {
+        // Hydrate staff permissions if staff member
+        if (role === 'STAFF' && (Array.isArray(user.permissions) || Array.isArray(user.allowedPermissions))) {
+          const perms = user.permissions || user.allowedPermissions || [];
           const { useStaffStore } = require('./useStaffStore.js');
-          useStaffStore.getState().setCurrentStaffPermissions(user.permissions);
+          useStaffStore.getState().setCurrentStaffPermissions(perms);
         }
       } else {
         set({
@@ -68,13 +79,13 @@ export const useAuthStore = create((set, get) => ({
    * Set authentication credentials after sign in or OTP verification
    */
   setCredentials: async ({ user, token, refreshToken, role }) => {
-    const resolvedRole = role || user?.role || 'ADMIN';
+    const resolvedRole = normalizeRole(role || user?.role);
     const updatedUser = { ...user, role: resolvedRole };
 
     await Promise.all([
-      storageService.setToken(token),
-      refreshToken ? storageService.setRefreshToken(refreshToken) : Promise.resolve(),
-      storageService.setUser(updatedUser),
+      secureStorage.setToken(token),
+      refreshToken ? secureStorage.setRefreshToken(refreshToken) : Promise.resolve(),
+      secureStorage.setUser(updatedUser),
     ]);
 
     set({
@@ -86,9 +97,10 @@ export const useAuthStore = create((set, get) => ({
       isLoading: false,
     });
 
-    if (resolvedRole === 'STAFF' && Array.isArray(updatedUser.permissions)) {
+    if (resolvedRole === 'STAFF') {
+      const perms = updatedUser.permissions || updatedUser.allowedPermissions || [];
       const { useStaffStore } = require('./useStaffStore.js');
-      useStaffStore.getState().setCurrentStaffPermissions(updatedUser.permissions);
+      useStaffStore.getState().setCurrentStaffPermissions(perms);
     }
   },
 
@@ -98,9 +110,15 @@ export const useAuthStore = create((set, get) => ({
   updateUser: async (updates) => {
     const current = get().user || {};
     const updatedUser = { ...current, ...updates };
+    if (updatedUser.role) {
+      updatedUser.role = normalizeRole(updatedUser.role);
+    }
 
-    await storageService.setUser(updatedUser);
-    set({ user: updatedUser });
+    await secureStorage.setUser(updatedUser);
+    set({
+      user: updatedUser,
+      role: updatedUser.role || get().role,
+    });
   },
 
   /**
@@ -109,9 +127,9 @@ export const useAuthStore = create((set, get) => ({
   logout: async () => {
     try {
       await Promise.all([
-        storageService.removeToken(),
-        storageService.removeRefreshToken(),
-        storageService.removeUser(),
+        secureStorage.removeToken(),
+        secureStorage.removeRefreshToken(),
+        secureStorage.removeUser(),
       ]);
     } catch (e) {
       console.warn('[useAuthStore] Logout purge error:', e.message);

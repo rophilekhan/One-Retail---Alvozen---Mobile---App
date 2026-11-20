@@ -107,3 +107,4 @@ const styles = StyleSheet.create({
 });
 
 export default AppSwitch;
+export const PAToggleSwitch = AppSwitch;

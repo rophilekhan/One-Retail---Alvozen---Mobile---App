@@ -1,251 +1,277 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
-import Svg, { Path, Rect } from 'react-native-svg';
-import { useTheme } from '../../theme/index.js';
-import { scale, verticalScale } from '../../theme/responsive.js';
 import {
-  AppScreenContainer,
+  View,
+  StyleSheet,
+  ScrollView,
+  Platform,
+  KeyboardAvoidingView,
+} from 'react-native';
+import { useTheme } from '../../theme/index.js';
+import { scale, verticalScale, scaleFont } from '../../theme/responsive.js';
+import { fontFamilies } from '../../theme/typography.js';
+import {
   AppText,
-  AppInput,
   AppButton,
-  AppHeader,
-  GlassCard,
-  AppBadge,
+  AuthScreenContainer,
+  RegistrationProgress,
+  AppBackButton,
   AppToast,
 } from '../../components/core/index.js';
+import { LicenseUploadCard } from '../../components/onboarding/index.js';
 import { usePharmacyStore } from '../../store/usePharmacyStore.js';
 
 /**
- * PharmacyLicensesScreen - Registration Step 3
- * Mandated by ONERETAIL_PRD.md:
- * - DSL Number, Expiry Date, DSL Picture
- * - Further License 1 Number, Expiry Date, Picture
- * - Further License 2 Number, Expiry Date, Picture
+ * PharmacyLicensesScreen - Step 3 of Onboarding
+ * Modeled after OneRx QualificationsScreen & ClinicInformationScreen 1:1.
+ * Captures mandatory DSL + optional Further Licenses 1 & 2.
  *
  * @param {Object} props
  * @param {Object} props.navigation
+ * @param {Object} props.route
  */
-export const PharmacyLicensesScreen = ({ navigation }) => {
-  const { colors, spacing } = useTheme();
-  const updateLicenses = usePharmacyStore((s) => s.updateLicenses);
+export const PharmacyLicensesScreen = ({ navigation, route }) => {
+  const { colors, spacing, typography } = useTheme();
 
-  // DSL
-  const [dslNumber, setDslNumber] = useState('');
-  const [dslExpiry, setDslExpiry] = useState('');
-  const [dslPicUploaded, setDslPicUploaded] = useState(false);
+  const [dsl, setDsl] = useState({
+    licenseNumber: '',
+    expiryDate: '2027-12-31',
+    documentUri: null,
+    status: 'Verified',
+  });
 
-  // Further License 1
-  const [license1, setLicense1] = useState('');
-  const [license1Expiry, setLicense1Expiry] = useState('');
-  const [license1PicUploaded, setLicense1PicUploaded] = useState(false);
+  const [further1, setFurther1] = useState({
+    licenseNumber: '',
+    expiryDate: '',
+    documentUri: null,
+    status: 'Pending',
+  });
 
-  // Further License 2 (Optional)
-  const [license2, setLicense2] = useState('');
-  const [license2Expiry, setLicense2Expiry] = useState('');
-  const [license2PicUploaded, setLicense2PicUploaded] = useState(false);
+  const [further2, setFurther2] = useState({
+    licenseNumber: '',
+    expiryDate: '',
+    documentUri: null,
+    status: 'Pending',
+  });
 
-  const handleUploadDoc = (docType) => {
-    if (docType === 'dsl') setDslPicUploaded(true);
-    if (docType === 'lic1') setLicense1PicUploaded(true);
-    if (docType === 'lic2') setLicense2PicUploaded(true);
+  const setLicenses = usePharmacyStore((s) => s.setLicenses || s.updateLicenses);
 
-    AppToast.show({
-      title: 'Document Attached',
-      message: 'License certificate photo uploaded successfully.',
-      type: 'success',
-    });
-  };
-
-  const handleContinue = () => {
-    if (!dslNumber.trim() || !dslExpiry.trim()) {
+  const handleNext = () => {
+    if (!dsl.licenseNumber.trim()) {
       AppToast.show({
         title: 'DSL Required',
-        message: 'Drug Sale License (DSL) number and expiry are mandatory.',
-        type: 'warning',
+        message: 'Drug Sale License (DSL) number is mandatory to operate a retail pharmacy.',
+        type: 'error',
       });
       return;
     }
 
-    // Save to store
-    updateLicenses({
-      dslNumber: dslNumber.trim(),
-      dslExpiryDate: dslExpiry.trim(),
-      dslPictureUri: dslPicUploaded ? 'attached_dsl_doc.jpg' : null,
-      furtherLicense1: license1.trim(),
-      furtherLicense1ExpiryDate: license1Expiry.trim(),
-      furtherLicense1PictureUri: license1PicUploaded ? 'attached_lic1_doc.jpg' : null,
-      furtherLicense2: license2.trim(),
-      furtherLicense2ExpiryDate: license2Expiry.trim(),
-      furtherLicense2PictureUri: license2PicUploaded ? 'attached_lic2_doc.jpg' : null,
+    // Persist licenses to Zustand store
+    if (setLicenses) {
+      setLicenses({
+        dsl: {
+          number: dsl.licenseNumber.trim(),
+          expiryDate: dsl.expiryDate,
+          imageUri: dsl.documentUri,
+        },
+        furtherLicense1: further1.licenseNumber.trim()
+          ? {
+              number: further1.licenseNumber.trim(),
+              expiryDate: further1.expiryDate,
+              imageUri: further1.documentUri,
+            }
+          : null,
+        furtherLicense2: further2.licenseNumber.trim()
+          ? {
+              number: further2.licenseNumber.trim(),
+              expiryDate: further2.expiryDate,
+              imageUri: further2.documentUri,
+            }
+          : null,
+        dslNumber: dsl.licenseNumber.trim(),
+        dslExpiryDate: dsl.expiryDate,
+        dslPictureUri: dsl.documentUri,
+        furtherLicense1Number: further1.licenseNumber.trim() || '',
+        furtherLicense1ExpiryDate: further1.expiryDate || '',
+        furtherLicense1PictureUri: further1.documentUri,
+        furtherLicense2Number: further2.licenseNumber.trim() || '',
+        furtherLicense2ExpiryDate: further2.expiryDate || '',
+        furtherLicense2PictureUri: further2.documentUri,
+      });
+    }
+
+    AppToast.show({
+      title: 'Licenses Saved',
+      message: 'Drug Sale License details recorded successfully.',
+      type: 'success',
     });
 
-    navigation.navigate('PharmacyLocation');
+    navigation.navigate('PharmacyLocation', {
+      userData: route?.params?.userData,
+    });
   };
 
   return (
-    <AppScreenContainer keyboardAvoiding={true} scrollable={true} withAmbientGlow={true}>
-      <AppHeader title="Regulatory Licenses" onBack={() => navigation.goBack()} />
+    <AuthScreenContainer withHorizontalPadding={false} keyboardAvoiding={false}>
+      <KeyboardAvoidingView
+        style={styles.safeArea}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? verticalScale(10) : 0}
+      >
+        {/* Progress Bar Header: Step 3 of 4 */}
+        <RegistrationProgress currentStep={3} totalSteps={4} style={{ marginBottom: verticalScale(12) }} />
 
-      <View style={styles.content}>
-        <View style={styles.stepHeader}>
-          <AppBadge label="Step 3 of 4" variant="brand" />
-          <AppText variant="headlineMedium" colorType="primary" style={styles.title}>
-            Pharmacy Licenses
-          </AppText>
-          <AppText variant="bodyMedium" colorType="muted">
-            Provide your Drug Sale License (DSL) and any further valid licenses.
-          </AppText>
-        </View>
-
-        {/* 1. Drug Sale License (Mandatory) */}
-        <GlassCard style={styles.licenseCard}>
-          <View style={styles.cardHeader}>
-            <AppText variant="titleMedium" colorType="primary">
-              Drug Sale License (DSL) *
-            </AppText>
-            <AppBadge label="Mandatory" variant="accent" />
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={[
+            styles.scrollContent,
+            {
+              paddingHorizontal: spacing?.screenHorizontal || scale(20),
+              paddingBottom: verticalScale(110),
+              gap: spacing?.md || verticalScale(16),
+            },
+          ]}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Header & Title Section */}
+          <View style={styles.headerContainer}>
+            <View style={styles.backButtonWrapper}>
+              <AppBackButton onPress={() => navigation.goBack()} />
+            </View>
+            <View style={styles.titleColumn}>
+              <AppText
+                variant="headlineMedium"
+                style={[
+                  styles.title,
+                  {
+                    color: colors.text.primary,
+                    fontFamily: fontFamilies.primaryMedium,
+                    fontSize: scaleFont(28),
+                    lineHeight: scaleFont(34),
+                  },
+                ]}
+              >
+                Drug Licenses
+              </AppText>
+              <AppText
+                variant="bodyMedium"
+                style={[
+                  styles.subtitle,
+                  {
+                    color: colors.text.secondary,
+                    fontFamily: fontFamilies.primaryRegular,
+                    fontSize: scaleFont(14),
+                    lineHeight: scaleFont(20),
+                  },
+                ]}
+              >
+                Enter regulatory drug sale license details and upload document photos for verification.
+              </AppText>
+            </View>
           </View>
 
-          <AppInput
-            label="DSL Number"
-            placeholder="e.g. DSL-KHI-2024-8991"
-            value={dslNumber}
-            onChangeText={setDslNumber}
-          />
+          {/* Licenses Cards Section */}
+          <View style={styles.cardsSection}>
+            {/* 1. Mandatory Drug Sale License (DSL) */}
+            <LicenseUploadCard
+              title="Drug Sale License (DSL)"
+              helperText="Mandatory retail drug license issued by Health Dept."
+              isRequired={true}
+              collapsible={false}
+              defaultExpanded={true}
+              licenseNumber={dsl.licenseNumber}
+              licenseExpiry={dsl.expiryDate}
+              imageUri={dsl.documentUri}
+              onLicenseNumberChange={(val) => setDsl((p) => ({ ...p, licenseNumber: val }))}
+              onLicenseExpiryChange={(val) => setDsl((p) => ({ ...p, expiryDate: val }))}
+              onUploadDoc={(uri) => setDsl((p) => ({ ...p, documentUri: uri, status: 'Verified' }))}
+              onRemoveDoc={() => setDsl((p) => ({ ...p, documentUri: null, status: 'Pending' }))}
+            />
 
-          <AppInput
-            label="DSL Expiry Date"
-            placeholder="DD/MM/YYYY"
-            value={dslExpiry}
-            onChangeText={setDslExpiry}
-          />
+            {/* 2. Further License 1 (Biologicals) */}
+            <LicenseUploadCard
+              title="Further License 1"
+              helperText="Biologicals / Cold Chain / Schedule G authorization."
+              isRequired={false}
+              collapsible={true}
+              defaultExpanded={false}
+              licenseNumber={further1.licenseNumber}
+              licenseExpiry={further1.expiryDate}
+              imageUri={further1.documentUri}
+              onLicenseNumberChange={(val) => setFurther1((p) => ({ ...p, licenseNumber: val }))}
+              onLicenseExpiryChange={(val) => setFurther1((p) => ({ ...p, expiryDate: val }))}
+              onUploadDoc={(uri) => setFurther1((p) => ({ ...p, documentUri: uri, status: 'Verified' }))}
+              onRemoveDoc={() => setFurther1((p) => ({ ...p, documentUri: null, status: 'Pending' }))}
+            />
 
-          <TouchableOpacity
-            style={styles.uploadBox}
-            activeOpacity={0.7}
-            onPress={() => handleUploadDoc('dsl')}
-          >
-            <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-              <Path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke={colors.brand?.primary || '#009BA9'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </Svg>
-            <AppText variant="captionMedium" colorType={dslPicUploaded ? 'success' : 'brand'} style={{ marginTop: 6 }}>
-              {dslPicUploaded ? '✓ DSL Photo Attached' : 'Upload DSL Certificate Photo'}
-            </AppText>
-          </TouchableOpacity>
-        </GlassCard>
-
-        {/* 2. Further License 1 */}
-        <GlassCard style={styles.licenseCard}>
-          <View style={styles.cardHeader}>
-            <AppText variant="titleMedium" colorType="primary">
-              Further License 1
-            </AppText>
-            <AppBadge label="Optional" variant="neutral" />
+            {/* 3. Further License 2 (Narcotics/Controlled) */}
+            <LicenseUploadCard
+              title="Further License 2"
+              helperText="Narcotics / Controlled drugs / Veterinary authorization."
+              isRequired={false}
+              collapsible={true}
+              defaultExpanded={false}
+              licenseNumber={further2.licenseNumber}
+              licenseExpiry={further2.expiryDate}
+              imageUri={further2.documentUri}
+              onLicenseNumberChange={(val) => setFurther2((p) => ({ ...p, licenseNumber: val }))}
+              onLicenseExpiryChange={(val) => setFurther2((p) => ({ ...p, expiryDate: val }))}
+              onUploadDoc={(uri) => setFurther2((p) => ({ ...p, documentUri: uri, status: 'Verified' }))}
+              onRemoveDoc={() => setFurther2((p) => ({ ...p, documentUri: null, status: 'Pending' }))}
+            />
           </View>
 
-          <AppInput
-            label="License Number"
-            placeholder="e.g. FL1-99824"
-            value={license1}
-            onChangeText={setLicense1}
-          />
-
-          <AppInput
-            label="Expiry Date"
-            placeholder="DD/MM/YYYY"
-            value={license1Expiry}
-            onChangeText={setLicense1Expiry}
-          />
-
-          <TouchableOpacity
-            style={styles.uploadBox}
-            activeOpacity={0.7}
-            onPress={() => handleUploadDoc('lic1')}
-          >
-            <AppText variant="captionMedium" colorType={license1PicUploaded ? 'success' : 'brand'}>
-              {license1PicUploaded ? '✓ License 1 Photo Attached' : 'Attach License 1 Photo'}
-            </AppText>
-          </TouchableOpacity>
-        </GlassCard>
-
-        {/* 3. Further License 2 */}
-        <GlassCard style={styles.licenseCard}>
-          <View style={styles.cardHeader}>
-            <AppText variant="titleMedium" colorType="primary">
-              Further License 2
-            </AppText>
-            <AppBadge label="Optional" variant="neutral" />
+          {/* Full-width Bottom Action Button */}
+          <View style={styles.bottomSection}>
+            <AppButton
+              variant="primary"
+              title="Save & Continue"
+              onPress={handleNext}
+              style={{ width: '100%' }}
+            />
           </View>
-
-          <AppInput
-            label="License Number"
-            placeholder="e.g. FL2-44120"
-            value={license2}
-            onChangeText={setLicense2}
-          />
-
-          <AppInput
-            label="Expiry Date"
-            placeholder="DD/MM/YYYY"
-            value={license2Expiry}
-            onChangeText={setLicense2Expiry}
-          />
-
-          <TouchableOpacity
-            style={styles.uploadBox}
-            activeOpacity={0.7}
-            onPress={() => handleUploadDoc('lic2')}
-          >
-            <AppText variant="captionMedium" colorType={license2PicUploaded ? 'success' : 'brand'}>
-              {license2PicUploaded ? '✓ License 2 Photo Attached' : 'Attach License 2 Photo'}
-            </AppText>
-          </TouchableOpacity>
-        </GlassCard>
-
-        <View style={{ height: spacing.lg }} />
-
-        <AppButton
-          variant="primary"
-          title="Continue to Location"
-          onPress={handleContinue}
-        />
-      </View>
-    </AppScreenContainer>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </AuthScreenContainer>
   );
 };
 
 const styles = StyleSheet.create({
-  content: {
-    paddingVertical: verticalScale(12),
+  safeArea: {
+    flex: 1,
   },
-  stepHeader: {
-    marginBottom: verticalScale(16),
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+  },
+  headerContainer: {
+    flexDirection: 'row',
+    marginTop: verticalScale(8),
+    marginBottom: verticalScale(12),
+  },
+  backButtonWrapper: {
+    marginLeft: scale(-12),
+    marginRight: scale(10),
+    marginTop: verticalScale(2),
+  },
+  titleColumn: {
+    flex: 1,
   },
   title: {
-    marginTop: verticalScale(8),
-    marginBottom: verticalScale(4),
+    letterSpacing: -0.5,
+    marginBottom: verticalScale(6),
   },
-  licenseCard: {
+  subtitle: {},
+  cardsSection: {
     width: '100%',
-    marginVertical: verticalScale(8),
     flexDirection: 'column',
-    alignItems: 'stretch',
+    gap: verticalScale(16),
   },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: verticalScale(8),
-  },
-  uploadBox: {
-    borderWidth: 1.2,
-    borderStyle: 'dashed',
-    borderColor: 'rgba(0, 155, 169, 0.4)',
-    borderRadius: scale(14),
-    padding: verticalScale(14),
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: verticalScale(8),
+  bottomSection: {
+    width: '100%',
+    paddingTop: verticalScale(10),
   },
 });
 

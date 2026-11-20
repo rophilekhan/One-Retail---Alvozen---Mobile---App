@@ -117,3 +117,5 @@ const styles = StyleSheet.create({
 });
 
 export default AppCheckbox;
+export const PACheckbox = AppCheckbox;
+

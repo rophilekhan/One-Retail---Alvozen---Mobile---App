@@ -6,18 +6,18 @@ import { AppText } from '../../components/core/index.js';
 import { useAuthStore } from '../../store/useAuthStore.js';
 
 /**
- * SplashScreen - Initial Application Entry Screen
- * Displays Alvozen OneRetail branding, hydrates encrypted session,
- * and seamlessly routes to MainTabs or Welcome.
+ * SplashScreen - Initial App Entry Screen
+ * Exact 1:1 port from OneRx SplashScreen with OneRetail by Alvozen branding.
  *
  * @param {Object} props
- * @param {Object} props.navigation
+ * @param {Object} props.navigation - React Navigation prop
  */
 export const SplashScreen = ({ navigation }) => {
   const { colors, isDark } = useTheme();
 
   useEffect(() => {
     let isMounted = true;
+    let timerId = null;
 
     const initializeSession = async () => {
       let targetScreen = 'Welcome';
@@ -32,10 +32,10 @@ export const SplashScreen = ({ navigation }) => {
           targetScreen = 'Welcome';
         }
       } catch (err) {
-        console.warn('[SplashScreen] Hydration warning:', err.message);
+        console.warn('[SplashScreen] Hydration error:', err.message);
         targetScreen = 'Welcome';
       } finally {
-        setTimeout(() => {
+        timerId = setTimeout(() => {
           if (!isMounted) return;
           if (navigation?.replace) {
             navigation.replace(targetScreen);
@@ -50,18 +50,19 @@ export const SplashScreen = ({ navigation }) => {
 
     return () => {
       isMounted = false;
+      if (timerId) clearTimeout(timerId);
     };
   }, [navigation]);
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background?.primary || (isDark ? '#020202' : '#ffffff') }]}>
+    <View style={[styles.container, { backgroundColor: colors.surface?.background || colors.background?.primary }]}>
       <StatusBar
         barStyle={isDark ? 'light-content' : 'dark-content'}
         backgroundColor="transparent"
         translucent
       />
 
-      {/* Center Brand Emblem */}
+      {/* Center Logo */}
       <View style={styles.emblemWrapper}>
         <Image
           source={
@@ -72,21 +73,22 @@ export const SplashScreen = ({ navigation }) => {
           style={styles.logo}
         />
         <AppText
-          variant="headlineMedium"
-          colorType="brand"
-          style={styles.brandSubtitle}
+          variant="headlineLarge"
+          style={[
+            styles.brandTitle,
+            { color: colors.text?.primary },
+          ]}
         >
-          OneRetail
+          One<AppText variant="headlineLarge" style={{ color: colors.brand?.primary || '#009BA9' }}>Retail</AppText>
         </AppText>
       </View>
 
       <View style={styles.footer}>
         <AppText
           variant="monoSmall"
-          colorType="muted"
-          style={styles.footerText}
+          style={[styles.footerText, { color: colors.text?.secondary || '#787878' }]}
         >
-          ALVOZEN • PHARMACY PLATFORM
+          ONERETAIL • BY ALVOZEN
         </AppText>
       </View>
     </View>
@@ -104,13 +106,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   logo: {
-    width: scale(190),
-    height: scale(84),
+    width: scale(180),
+    height: scale(70),
     resizeMode: 'contain',
+    marginBottom: verticalScale(10),
   },
-  brandSubtitle: {
-    marginTop: verticalScale(6),
-    letterSpacing: -0.5,
+  brandTitle: {
+    fontSize: scaleFont(32),
+    lineHeight: scaleFont(38),
+    fontFamily: 'DMSans-Medium',
+    letterSpacing: -0.8,
   },
   footer: {
     position: 'absolute',
@@ -118,7 +123,8 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   footerText: {
-    letterSpacing: 1.2,
+    fontSize: scaleFont(11),
+    letterSpacing: 1.4,
   },
 });
 

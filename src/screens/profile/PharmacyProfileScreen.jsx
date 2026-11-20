@@ -1,8 +1,8 @@
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import Svg, { Path, Circle } from 'react-native-svg';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import { useTheme } from '../../theme/index.js';
-import { scale, verticalScale, scaleFont } from '../../theme/responsive.js';
+import { scale, verticalScale } from '../../theme/responsive.js';
 import {
   AppScreenContainer,
   AppText,
@@ -10,44 +10,42 @@ import {
   GlassCard,
   AppBadge,
   AppButton,
-  MetricIconDisc,
   AppToast,
 } from '../../components/core/index.js';
+import { PiiScoreBreakdownCard } from '../../components/profile/index.js';
+import { ImpactHeroSection, ImpactStatCard } from '../../components/wallet/index.js';
 import { usePharmacyStore, PII_TIERS } from '../../store/usePharmacyStore.js';
 import { useAuthStore } from '../../store/useAuthStore.js';
 
 /**
- * PharmacyProfileScreen - Comprehensive Pharmacy Profile & PII Intelligence
+ * PharmacyProfileScreen - Comprehensive Pharmacy Identity & Intelligence Profile
  * Mandated by ONERETAIL_PRD.md:
- * - DSL Number, Expiry, Document Picture status
- * - Further Licenses 1 & 2 Number, Expiry, Picture status
- * - Pharmacy Address + GPS Location Pin
- * - Pharmacy Façade preview
- * - Pharmacy Impact Index (PII) score + 3 Drivers breakdown
- * - Earnings Dashboard + Cashout CTA
+ * - Pharmacy Identity & Territory Badge
+ * - Verified License cards with Expiry Alerts
+ * - Façade Photo & Location Preview
+ * - Composite PII Score Breakdown Card
+ * - Staff Management Shortcut
  *
  * @param {Object} props
  * @param {Object} props.navigation
  */
 export const PharmacyProfileScreen = ({ navigation }) => {
-  const { colors, spacing, isDark } = useTheme();
+  const { colors, isDark } = useTheme();
   const pharmacy = usePharmacyStore();
   const user = useAuthStore((s) => s.user);
 
   const pharmacyName = pharmacy.name || user?.name || 'City Meds Pharmacy';
   const address = pharmacy.address || 'Plot 42-B, Commercial Area, Block 6, PECHS, Karachi';
+  const territoryName = pharmacy.territory?.name || 'PECHS / Tariq Road, Karachi';
+
+  const dslNumber = pharmacy.dsl?.number || pharmacy.dslNumber || '05-42-01992';
+  const dslExpiry = pharmacy.dsl?.expiryDate || pharmacy.dslExpiryDate || '2027-12-31';
+
+  const lic1Number = pharmacy.furtherLicense1?.number || pharmacy.furtherLicense1Number || 'FL1-8841-KHI';
+  const lic1Expiry = pharmacy.furtherLicense1?.expiryDate || pharmacy.furtherLicense1ExpiryDate || '2026-10-15';
+
   const piiScore = pharmacy.piiScore || 842;
   const piiTier = pharmacy.piiTier || PII_TIERS.KEY_ACCOUNT;
-  const walletBalance = pharmacy.walletBalance || 48500;
-  const pendingCashout = pharmacy.pendingCashout || 12000;
-
-  const handleCashout = () => {
-    AppToast.show({
-      title: 'Cashout Request Submitted',
-      message: `Withdrawal request for PKR ${walletBalance.toLocaleString()} initiated. Tax documentation generated.`,
-      type: 'success',
-    });
-  };
 
   return (
     <AppScreenContainer scrollable={true} withAmbientGlow={true}>
@@ -62,417 +60,263 @@ export const PharmacyProfileScreen = ({ navigation }) => {
             accessibilityRole="button"
             accessibilityLabel="Staff Management"
           >
-            <AppBadge label="Staff" variant="brand" />
+            <AppBadge label="Manage Staff" variant="brand" size="sm" />
           </TouchableOpacity>
         }
       />
 
-      <View style={styles.content}>
-        {/* Top Summary Card */}
+      <View style={styles.contentWrap}>
+        {/* 1. Identity & Territory Card */}
         <GlassCard style={styles.card}>
-          <View style={styles.topInfoRow}>
-            <MetricIconDisc variant="teal" size={54} marginRight={14}>
-              <Svg width={scale(26)} height={scale(26)} viewBox="0 0 24 24" fill="none">
-                <Path
-                  d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-4a1 1 0 011-1h2a1 1 0 011 1v4"
-                  stroke={colors.text.inverse || '#FFFFFF'}
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </Svg>
-            </MetricIconDisc>
-
-            <View style={{ flex: 1 }}>
-              <AppText variant="titleLarge" colorType="primary" numberOfLines={1}>
-                {pharmacyName}
-              </AppText>
-              <AppText variant="caption" colorType="muted" style={{ marginTop: 2 }}>
-                Territory: {pharmacy.territory?.name || 'Karachi South Central'}
-              </AppText>
-              <View style={styles.badgeRow}>
-                <AppBadge label={`Tier: ${piiTier}`} variant="brand" />
-                <View style={{ width: 6 }} />
-                <AppBadge
-                  label={pharmacy.skuVisibilityEnabled ? 'SKU Visible' : 'SKU Private'}
-                  variant={pharmacy.skuVisibilityEnabled ? 'success' : 'muted'}
-                />
-              </View>
-            </View>
-          </View>
-
-          {/* Façade & Location Banner */}
-          <View
-            style={[
-              styles.locationBanner,
-              {
-                backgroundColor: isDark
-                  ? 'rgba(255, 255, 255, 0.03)'
-                  : 'rgba(0, 0, 0, 0.03)',
-                borderColor: colors.border.subtle,
-              },
-            ]}
-          >
-            <View style={styles.bannerRow}>
-              <Svg width={scale(18)} height={scale(18)} viewBox="0 0 24 24" fill="none">
-                <Path
-                  d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"
-                  stroke={colors.brand.primary}
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <Circle cx="12" cy="9" r="2.5" stroke={colors.brand.primary} strokeWidth="1.5" />
-              </Svg>
-              <View style={{ flex: 1, marginLeft: scale(8) }}>
-                <AppText variant="bodySmall" colorType="primary" numberOfLines={2}>
-                  {address}
-                </AppText>
-                <AppText variant="caption" colorType="muted" style={{ marginTop: 2 }}>
-                  GPS: 24.8607° N, 67.0011° E • Façade Photo Verified
-                </AppText>
-              </View>
-            </View>
-          </View>
-        </GlassCard>
-
-        {/* Pharmacy Impact Index (PII) Intelligence Card */}
-        <GlassCard style={styles.card}>
-          <View style={styles.sectionHeader}>
-            <View style={{ flex: 1 }}>
-              <AppText variant="titleMedium" colorType="primary">
-                Pharmacy Impact Index (PII)
-              </AppText>
-              <AppText variant="caption" colorType="muted">
-                Platform benchmarking score & performance tier
-              </AppText>
-            </View>
-            <AppBadge label={piiTier} variant="accent" />
-          </View>
-
-          <View style={styles.scoreRow}>
-            <MetricIconDisc variant="gold" size={48} marginRight={12}>
+          <View style={styles.topIdentityRow}>
+            <View style={[styles.avatarCircle, { backgroundColor: colors.brand?.primary }]}>
               <Svg width={scale(24)} height={scale(24)} viewBox="0 0 24 24" fill="none">
                 <Path
-                  d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
-                  stroke={colors.text.inverse || '#FFFFFF'}
+                  d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-3"
+                  stroke="#FFFFFF"
                   strokeWidth="2"
                   strokeLinecap="round"
-                  strokeLinejoin="round"
                 />
               </Svg>
-            </MetricIconDisc>
-            <View>
-              <AppText variant="headlineMedium" colorType="primary">
-                {piiScore} <AppText variant="bodyMedium" colorType="brand">pts</AppText>
-              </AppText>
-              <AppText variant="caption" colorType="muted">
-                Top 8% in Karachi South territory
+            </View>
+
+            <View style={styles.identityTextWrap}>
+              <View style={styles.titleBadgeRow}>
+                <AppText variant="headlineSmall" colorType="primary" style={styles.pharmacyTitle}>
+                  {pharmacyName}
+                </AppText>
+              </View>
+              <AppText variant="caption" colorType="muted" style={{ marginTop: 2 }}>
+                Retail Licensee ID: DRAP-PK-2024-911
               </AppText>
             </View>
           </View>
 
-          {/* 3 PRD Mandated Score Drivers */}
-          <View style={styles.driverList}>
-            <View
-              style={[
-                styles.driverItem,
-                { borderBottomColor: colors.border.subtle },
-              ]}
-            >
-              <View style={{ flex: 1 }}>
-                <AppText variant="bodyMediumMedium" colorType="primary">
-                  Digital Prescription QR Scanning
-                </AppText>
-                <AppText variant="caption" colorType="muted">
-                  Scanned Rx QR codes & confirmed dispenses
-                </AppText>
-              </View>
-              <AppBadge label="+340 pts" variant="success" />
+          {/* Territory Badge & Address */}
+          <View style={[styles.territoryRow, { borderTopColor: colors.border?.subtle }]}>
+            <View style={styles.territoryItem}>
+              <AppText variant="caption" colorType="muted">
+                COMMERCIAL TERRITORY
+              </AppText>
+              <AppText variant="bodySmallMedium" colorType="brand" style={{ marginTop: 2 }}>
+                {territoryName}
+              </AppText>
             </View>
+            <AppBadge label="Verified Trade" variant="success" size="sm" />
+          </View>
 
-            <View
-              style={[
-                styles.driverItem,
-                { borderBottomColor: colors.border.subtle },
-              ]}
-            >
-              <View style={{ flex: 1 }}>
-                <AppText variant="bodyMediumMedium" colorType="primary">
-                  Data Sharing with Pharma
-                </AppText>
-                <AppText variant="caption" colorType="muted">
-                  Daily closing & stock availability sharing
-                </AppText>
-              </View>
-              <AppBadge label="+280 pts" variant="success" />
-            </View>
-
-            <View style={styles.driverItem}>
-              <View style={{ flex: 1 }}>
-                <AppText variant="bodyMediumMedium" colorType="primary">
-                  Digital Pharma Engagement
-                </AppText>
-                <AppText variant="caption" colorType="muted">
-                  Trade schemes participation & surveys
-                </AppText>
-              </View>
-              <AppBadge label="+222 pts" variant="success" />
-            </View>
+          <View style={styles.addressBox}>
+            <AppText variant="caption" colorType="muted">
+              STORE LOCATION
+            </AppText>
+            <AppText variant="bodySmall" colorType="primary" style={{ marginTop: 2 }}>
+              {address}
+            </AppText>
           </View>
         </GlassCard>
 
-        {/* Financial Incentive Dashboard & Cashout */}
+        {/* 2. Pharmacy Impact Index (PII) Arc Gauge & Stats */}
+        <ImpactHeroSection
+          tier={piiTier}
+          score={piiScore}
+          onPressScore={() => navigation.navigate('ImpactWallet')}
+          onPressMilestone={() => navigation.navigate('ImpactWallet')}
+        />
+
+        <View style={styles.profileStatsRow}>
+          <View style={{ flex: 1 }}>
+            <ImpactStatCard
+              title="POINTS EARNED"
+              amount="12,450"
+              suffix="pts"
+              icon="points"
+              onPress={() => navigation.navigate('PointsEarned')}
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <ImpactStatCard
+              title="TOTAL EARNINGS"
+              amount="48,500"
+              suffix="PKR"
+              icon="earnings"
+              onPress={() => navigation.navigate('Earnings')}
+            />
+          </View>
+        </View>
+
+        {/* 3. Pharmacy Impact Index (PII) Drivers Breakdown */}
+        <PiiScoreBreakdownCard score={piiScore} tier={piiTier} />
+
+        {/* 3. Verified Regulatory Licenses */}
         <GlassCard style={styles.card}>
-          <View style={styles.sectionHeader}>
-            <View style={{ flex: 1 }}>
-              <AppText variant="titleMedium" colorType="primary">
-                Earnings & Wallet
+          <View style={styles.licenseHeaderRow}>
+            <AppText variant="titleMedium" colorType="primary">
+              Regulatory Licenses
+            </AppText>
+            <AppBadge label="DRAP Verified" variant="brand" size="sm" />
+          </View>
+
+          {/* DSL Item */}
+          <View style={[styles.licenseItem, { borderColor: colors.border?.subtle }]}>
+            <View style={styles.licenseLeft}>
+              <AppText variant="bodyMediumMedium" colorType="primary">
+                Drug Sale License (DSL)
               </AppText>
               <AppText variant="caption" colorType="muted">
-                Real-time financial incentives across all activities
+                No: {dslNumber} • Expires: {dslExpiry}
               </AppText>
             </View>
-            <MetricIconDisc variant="teal" size={36}>
-              <Svg width={scale(18)} height={scale(18)} viewBox="0 0 24 24" fill="none">
-                <Path
-                  d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"
-                  stroke={colors.text.inverse || '#FFFFFF'}
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </Svg>
-            </MetricIconDisc>
+            <AppBadge label="Valid" variant="success" size="sm" />
           </View>
 
-          <View style={styles.walletRow}>
-            <View style={{ flex: 1 }}>
-              <AppText variant="caption" colorType="muted">Available Balance</AppText>
-              <AppText variant="titleLarge" colorType="primary">
-                PKR {walletBalance.toLocaleString()}
+          {/* Further License 1 Item */}
+          <View style={[styles.licenseItem, { borderColor: colors.border?.subtle }]}>
+            <View style={styles.licenseLeft}>
+              <AppText variant="bodyMediumMedium" colorType="primary">
+                Further License – 1 (Biologicals)
+              </AppText>
+              <AppText variant="caption" colorType="muted">
+                No: {lic1Number} • Expires: {lic1Expiry}
               </AppText>
             </View>
-            <View style={{ flex: 1, alignItems: 'flex-end' }}>
-              <AppText variant="caption" colorType="muted">Pending Clearance</AppText>
-              <AppText variant="titleLarge" colorType="accent">
-                PKR {pendingCashout.toLocaleString()}
-              </AppText>
-            </View>
+            <AppBadge label="Valid" variant="success" size="sm" />
           </View>
-
-          <View style={{ height: spacing.sm }} />
-          <AppButton
-            variant="accent"
-            size="md"
-            title="Cashout via EasyPaisa / Bank"
-            onPress={handleCashout}
-          />
         </GlassCard>
 
-        {/* Regulatory Licenses Compliance Section */}
+        {/* 4. Façade Picture & Shopfront Preview */}
         <GlassCard style={styles.card}>
-          <View style={styles.sectionHeader}>
-            <View style={{ flex: 1 }}>
-              <AppText variant="titleMedium" colorType="primary">
-                Regulatory Licenses
-              </AppText>
-              <AppText variant="caption" colorType="muted">
-                Drug Sale License (DSL) & Further Licenses
-              </AppText>
-            </View>
-            <AppBadge label="Compliant" variant="success" />
+          <View style={styles.facadeHeader}>
+            <AppText variant="titleMedium" colorType="primary">
+              Store Façade
+            </AppText>
+            <AppBadge label="Active Shopfront" variant="brand" size="sm" />
           </View>
 
-          {/* DSL License */}
           <View
             style={[
-              styles.licenseBlock,
+              styles.facadePreview,
               {
-                backgroundColor: isDark
-                  ? 'rgba(255, 255, 255, 0.03)'
-                  : 'rgba(0, 0, 0, 0.02)',
-                borderColor: colors.border.subtle,
+                backgroundColor: isDark ? 'rgba(0, 155, 169, 0.08)' : 'rgba(0, 155, 169, 0.04)',
+                borderColor: colors.border?.subtle,
               },
             ]}
           >
-            <View style={styles.licenseRow}>
-              <View style={{ flex: 1 }}>
-                <AppText variant="bodyMediumMedium" colorType="primary">
-                  Drug Sale License (DSL)
-                </AppText>
-                <AppText variant="caption" colorType="brand">
-                  {pharmacy.dslNumber || 'DSL-KHI-49201'}
-                </AppText>
-                <AppText variant="caption" colorType="muted">
-                  Expiry: {pharmacy.dslExpiryDate || '2027-12-31'}
-                </AppText>
-              </View>
-              <AppBadge label="Verified" variant="success" />
-            </View>
-          </View>
-
-          {/* Further License 1 */}
-          <View
-            style={[
-              styles.licenseBlock,
-              {
-                backgroundColor: isDark
-                  ? 'rgba(255, 255, 255, 0.03)'
-                  : 'rgba(0, 0, 0, 0.02)',
-                borderColor: colors.border.subtle,
-              },
-            ]}
-          >
-            <View style={styles.licenseRow}>
-              <View style={{ flex: 1 }}>
-                <AppText variant="bodyMediumMedium" colorType="primary">
-                  Further License 1
-                </AppText>
-                <AppText variant="caption" colorType="brand">
-                  {pharmacy.furtherLicense1 || 'FL1-DRAP-8812'}
-                </AppText>
-                <AppText variant="caption" colorType="muted">
-                  Expiry: {pharmacy.furtherLicense1ExpiryDate || '2028-06-30'}
-                </AppText>
-              </View>
-              <AppBadge label="Active" variant="brand" />
-            </View>
-          </View>
-
-          {/* Further License 2 */}
-          <View
-            style={[
-              styles.licenseBlock,
-              {
-                backgroundColor: isDark
-                  ? 'rgba(255, 255, 255, 0.03)'
-                  : 'rgba(0, 0, 0, 0.02)',
-                borderColor: colors.border.subtle,
-              },
-            ]}
-          >
-            <View style={styles.licenseRow}>
-              <View style={{ flex: 1 }}>
-                <AppText variant="bodyMediumMedium" colorType="primary">
-                  Further License 2
-                </AppText>
-                <AppText variant="caption" colorType="muted">
-                  {pharmacy.furtherLicense2 ? pharmacy.furtherLicense2 : 'Not registered (Optional)'}
-                </AppText>
-                {pharmacy.furtherLicense2ExpiryDate ? (
-                  <AppText variant="caption" colorType="muted">
-                    Expiry: {pharmacy.furtherLicense2ExpiryDate}
-                  </AppText>
-                ) : null}
-              </View>
-              <AppBadge
-                label={pharmacy.furtherLicense2 ? 'Active' : 'Optional'}
-                variant={pharmacy.furtherLicense2 ? 'brand' : 'muted'}
+            <Svg width={scale(32)} height={scale(32)} viewBox="0 0 24 24" fill="none">
+              <Path
+                d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"
+                stroke={colors.brand?.primary || '#009BA9'}
+                strokeWidth="1.8"
+                strokeLinecap="round"
               />
-            </View>
+              <Path d="M9 22V12h6v10" stroke={colors.brand?.primary || '#009BA9'} strokeWidth="1.8" />
+            </Svg>
+            <AppText variant="bodySmallMedium" colorType="primary" style={{ marginTop: 8 }}>
+              Storefront Verification Approved
+            </AppText>
+            <AppText variant="caption" colorType="muted">
+              Attached: facade_pechs_main.jpg
+            </AppText>
           </View>
         </GlassCard>
 
-        {/* Staff Profiles Management CTA */}
-        <GlassCard style={styles.card}>
-          <View style={styles.sectionHeader}>
-            <View style={{ flex: 1 }}>
-              <AppText variant="titleMedium" colorType="primary">
-                Staff Hierarchy & Permissions
-              </AppText>
-              <AppText variant="caption" colorType="muted">
-                Admin controls for staff logins and RBAC access
-              </AppText>
-            </View>
-          </View>
+        <View style={{ height: verticalScale(14) }} />
 
-          <AppButton
-            variant="secondary"
-            size="md"
-            title="Manage Staff Profiles"
-            onPress={() => navigation.navigate('StaffList')}
-          />
-        </GlassCard>
-
-        <View style={{ height: verticalScale(20) }} />
+        {/* Staff Management CTA */}
+        <AppButton
+          variant="secondary"
+          title="Manage Staff Hierarchy & Permissions"
+          onPress={() => navigation.navigate('StaffList')}
+        />
       </View>
     </AppScreenContainer>
   );
 };
 
 const styles = StyleSheet.create({
-  content: {
-    paddingVertical: verticalScale(12),
+  contentWrap: {
+    paddingHorizontal: scale(20),
+    paddingBottom: verticalScale(36),
   },
   headerRightBtn: {
-    paddingHorizontal: scale(4),
+    padding: scale(4),
   },
   card: {
-    width: '100%',
-    marginVertical: verticalScale(6),
-    flexDirection: 'column',
-    alignItems: 'stretch',
-  },
-  topInfoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: '100%',
-  },
-  badgeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: verticalScale(6),
-  },
-  locationBanner: {
-    width: '100%',
-    borderRadius: scale(12),
-    borderWidth: 1,
-    padding: scale(10),
-    marginTop: verticalScale(12),
-  },
-  bannerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: verticalScale(12),
-  },
-  scoreRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    padding: scale(16),
     marginBottom: verticalScale(14),
   },
-  driverList: {
-    width: '100%',
+  profileStatsRow: {
+    flexDirection: 'row',
+    gap: scale(12),
+    marginVertical: verticalScale(10),
   },
-  driverItem: {
+  topIdentityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: verticalScale(12),
+  },
+  avatarCircle: {
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(22),
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: scale(12),
+  },
+  identityTextWrap: {
+    flex: 1,
+  },
+  titleBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  pharmacyTitle: {
+    letterSpacing: -0.5,
+  },
+  territoryRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: verticalScale(8),
-    borderBottomWidth: 1,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingTop: verticalScale(10),
+    marginBottom: verticalScale(10),
   },
-  walletRow: {
+  territoryItem: {
+    flex: 1,
+  },
+  addressBox: {
+    marginTop: verticalScale(2),
+  },
+  licenseHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: verticalScale(12),
+  },
+  licenseItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginVertical: verticalScale(8),
+    padding: scale(10),
+    borderRadius: scale(10),
+    borderWidth: 1,
+    marginBottom: verticalScale(8),
   },
-  licenseBlock: {
-    width: '100%',
+  licenseLeft: {
+    flex: 1,
+    paddingRight: scale(8),
+  },
+  facadeHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: verticalScale(10),
+  },
+  facadePreview: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: verticalScale(20),
     borderRadius: scale(12),
     borderWidth: 1,
-    padding: scale(10),
-    marginVertical: verticalScale(4),
-  },
-  licenseRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
   },
 });
 

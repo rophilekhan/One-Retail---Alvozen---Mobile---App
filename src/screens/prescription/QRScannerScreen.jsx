@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, TouchableOpacity, Animated, Easing } from 'react-native';
-import Svg, { Path, Rect, Line } from 'react-native-svg';
+import React, { useState } from 'react';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import {
   AppScreenContainer,
   AppText,
@@ -8,14 +7,14 @@ import {
   GlassCard,
   AppButton,
   AppInput,
-  AppBadge,
   AppToast,
 } from '../../components/core/index.js';
 import { useTheme } from '../../theme/index.js';
-import { scale, verticalScale, scaleFont } from '../../theme/responsive.js';
+import { scale, verticalScale } from '../../theme/responsive.js';
 import { useDispenseStore } from '../../store/useDispenseStore.js';
 import { PermissionGuard } from '../../components/common/PermissionGuard.jsx';
 import { PERMISSIONS } from '../../store/useStaffStore.js';
+import { QRScannerViewfinder } from '../../components/prescription/index.js';
 
 /**
  * QRScannerScreen - Dual Mode Prescription Scanner
@@ -28,39 +27,10 @@ import { PERMISSIONS } from '../../store/useStaffStore.js';
  * @param {Object} props.navigation
  */
 export const QRScannerScreen = ({ navigation }) => {
-  const { colors, spacing, isDark } = useTheme();
+  const { colors, spacing } = useTheme();
   const [scanMode, setScanMode] = useState('DEVICE'); // 'DEVICE' | 'PLUGIN'
   const [pluginPayload, setPluginPayload] = useState('');
   const setScannedPrescription = useDispenseStore((s) => s.setScannedPrescription);
-
-  // Laser scanner animation
-  const laserAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(laserAnim, {
-          toValue: 1,
-          duration: 1800,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-        Animated.timing(laserAnim, {
-          toValue: 0,
-          duration: 1800,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-      ])
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [laserAnim]);
-
-  const laserTranslateY = laserAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, scale(200)],
-  });
 
   const handleTriggerPrescriptionScan = (payloadText) => {
     // Grounded mock prescription complying with PRD:
@@ -113,7 +83,7 @@ export const QRScannerScreen = ({ navigation }) => {
         },
         {
           id: 'item_3',
-          brandName: null, // Prescribed by generic name!
+          brandName: null, // Prescribed by generic name
           genericName: 'Omeprazole 20mg Capsule',
           genericId: 'gen_omeprazole_20',
           dosageForm: 'Capsule',
@@ -192,47 +162,14 @@ export const QRScannerScreen = ({ navigation }) => {
           }
         >
           <View style={styles.scannerWrapper}>
-            <GlassCard style={styles.viewfinderCard}>
-              <View style={styles.viewfinderBox}>
-                {/* Frame Corner Accents */}
-                <View style={[styles.corner, styles.cornerTL, { borderColor: colors.brand?.primary }]} />
-                <View style={[styles.corner, styles.cornerTR, { borderColor: colors.brand?.primary }]} />
-                <View style={[styles.corner, styles.cornerBL, { borderColor: colors.brand?.primary }]} />
-                <View style={[styles.corner, styles.cornerBR, { borderColor: colors.brand?.primary }]} />
+            <QRScannerViewfinder instructionText="Center the QR code from the digital prescription within the frame" />
 
-                {/* Animated Laser Bar */}
-                <Animated.View
-                  style={[
-                    styles.laserBar,
-                    {
-                      backgroundColor: colors.brand?.primary,
-                      shadowColor: colors.brand?.primary,
-                      transform: [{ translateY: laserTranslateY }],
-                    },
-                  ]}
-                />
-
-                <Svg width={scale(70)} height={scale(70)} viewBox="0 0 24 24" fill="none" opacity={0.3}>
-                  <Path
-                    d="M3 9a2 2 0 012-2h14a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
-                    stroke={colors.brand?.primary}
-                    strokeWidth="1.5"
-                  />
-                  <Path d="M7 12h10" stroke={colors.brand?.primary} strokeWidth="1.5" strokeDasharray="2 2" />
-                </Svg>
-              </View>
-
-              <AppText variant="caption" colorType="muted" style={{ marginTop: 12, textAlign: 'center' }}>
-                Center the QR code from the digital prescription within the frame
-              </AppText>
-
-              <View style={{ height: verticalScale(14) }} />
-              <AppButton
-                variant="primary"
-                title="Scan Patient Prescription QR"
-                onPress={() => handleTriggerPrescriptionScan()}
-              />
-            </GlassCard>
+            <View style={{ height: verticalScale(14) }} />
+            <AppButton
+              variant="primary"
+              title="Scan Patient Prescription QR"
+              onPress={() => handleTriggerPrescriptionScan()}
+            />
           </View>
         </PermissionGuard>
       ) : (
@@ -298,44 +235,6 @@ const styles = StyleSheet.create({
   },
   scannerWrapper: {
     marginVertical: verticalScale(8),
-  },
-  viewfinderCard: {
-    width: '100%',
-    alignItems: 'center',
-    paddingVertical: verticalScale(20),
-  },
-  viewfinderBox: {
-    width: scale(240),
-    height: scale(220),
-    borderRadius: scale(16),
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  corner: {
-    position: 'absolute',
-    width: scale(24),
-    height: scale(24),
-    borderWidth: 3,
-  },
-  cornerTL: { top: 0, left: 0, borderRightWidth: 0, borderBottomWidth: 0 },
-  cornerTR: { top: 0, right: 0, borderLeftWidth: 0, borderBottomWidth: 0 },
-  cornerBL: { bottom: 0, left: 0, borderRightWidth: 0, borderTopWidth: 0 },
-  cornerBR: { bottom: 0, right: 0, borderLeftWidth: 0, borderTopWidth: 0 },
-  laserBar: {
-    position: 'absolute',
-    top: 10,
-    left: scale(10),
-    right: scale(10),
-    height: 2.5,
-    borderRadius: 2,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.9,
-    shadowRadius: 6,
-    elevation: 4,
   },
   card: {
     width: '100%',

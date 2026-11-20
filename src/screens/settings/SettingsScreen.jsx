@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
-import Svg, { Path, Circle } from 'react-native-svg';
 import {
   AppScreenContainer,
   AppText,
@@ -16,6 +15,14 @@ import { useTheme } from '../../theme/index.js';
 import { scale, verticalScale } from '../../theme/responsive.js';
 import { usePharmacyStore } from '../../store/usePharmacyStore.js';
 import { useAuthStore } from '../../store/useAuthStore.js';
+import {
+  TransferArrowsIconSvg,
+  SlidersIconSvg,
+  HospitalIconSvg,
+  UserOutlineIconSvg,
+  LogoutIconSvg,
+  ChevronRightSvg,
+} from '../../assets/vectors/index.js';
 
 /**
  * SettingsScreen - Platform Settings & Privacy Controls
@@ -25,6 +32,7 @@ import { useAuthStore } from '../../store/useAuthStore.js';
  * - Theme switcher (Light, Dark, System)
  * - Navigation links to Pharmacy Profile & Staff Management
  * - Sign Out action
+ * Features exact OneRx vector icons (Zero emoji/text placeholders).
  *
  * @param {Object} props
  * @param {Object} props.navigation
@@ -35,7 +43,7 @@ export const SettingsScreen = ({ navigation }) => {
   const setSkuVisibility = usePharmacyStore((s) => s.setSkuVisibility);
   const logout = useAuthStore((s) => s.logout);
 
-  // Pharma privacy controls (PRD: Pharmacy controls who can contact them and what data is visible to pharma)
+  // Pharma privacy controls
   const [allowPharmaContact, setAllowPharmaContact] = useState(true);
   const [shareAnonymizedData, setShareAnonymizedData] = useState(true);
   const [showInDirectory, setShowInDirectory] = useState(true);
@@ -58,7 +66,11 @@ export const SettingsScreen = ({ navigation }) => {
       {/* 1. Core PRD Feature: Reciprocal SKU Visibility */}
       <GlassCard style={styles.card}>
         <View style={styles.settingRow}>
-          <View style={{ flex: 1, paddingRight: 12 }}>
+          <MetricIconDisc variant="purple" size={38} marginRight={10}>
+            <TransferArrowsIconSvg size={20} color="#FFFFFF" />
+          </MetricIconDisc>
+
+          <View style={{ flex: 1, paddingRight: 10 }}>
             <View style={styles.titleWithBadge}>
               <AppText variant="titleMedium" colorType="primary">
                 Reciprocal SKU Visibility
@@ -69,7 +81,7 @@ export const SettingsScreen = ({ navigation }) => {
                 size="sm"
               />
             </View>
-            <AppText variant="caption" colorType="muted" style={{ marginTop: 4 }}>
+            <AppText variant="caption" colorType="muted" style={{ marginTop: 2 }}>
               Allow peer pharmacies in your territory to view your brand availability.
             </AppText>
           </View>
@@ -100,12 +112,19 @@ export const SettingsScreen = ({ navigation }) => {
 
       {/* 2. PRD Feature: Pharma Contact & Data Visibility Controls */}
       <GlassCard style={styles.card}>
-        <AppText variant="titleMedium" colorType="primary">
-          Pharma Visibility & Contact
-        </AppText>
-        <AppText variant="caption" colorType="muted" style={{ marginBottom: 12 }}>
-          Control who can contact your pharmacy and what data is shared with manufacturers.
-        </AppText>
+        <View style={styles.sectionHeaderRow}>
+          <MetricIconDisc variant="teal" size={38} marginRight={10}>
+            <SlidersIconSvg size={20} color="#FFFFFF" />
+          </MetricIconDisc>
+          <View style={{ flex: 1 }}>
+            <AppText variant="titleMedium" colorType="primary">
+              Pharma Visibility & Contact
+            </AppText>
+            <AppText variant="caption" colorType="muted">
+              Control manufacturer outreach & sales sharing
+            </AppText>
+          </View>
+        </View>
 
         {/* Field Rep Outreach */}
         <View style={[styles.subSettingRow, { borderBottomColor: colors.border?.subtle }]}>
@@ -191,7 +210,7 @@ export const SettingsScreen = ({ navigation }) => {
 
       {/* 4. Navigation Shortcuts */}
       <GlassCard style={styles.card}>
-        <AppText variant="titleMedium" colorType="primary">
+        <AppText variant="titleMedium" colorType="primary" style={{ marginBottom: 6 }}>
           Management & Credentials
         </AppText>
 
@@ -199,7 +218,8 @@ export const SettingsScreen = ({ navigation }) => {
           style={[styles.linkRow, { borderBottomColor: colors.border?.subtle }]}
           onPress={() => navigation.navigate('PharmacyProfile')}
         >
-          <View style={{ flex: 1 }}>
+          <HospitalIconSvg size={20} color={colors.brand?.primary} />
+          <View style={{ flex: 1, marginLeft: 10 }}>
             <AppText variant="bodyMediumMedium" colorType="primary">
               Pharmacy Profile & Regulatory Licenses
             </AppText>
@@ -207,14 +227,15 @@ export const SettingsScreen = ({ navigation }) => {
               DSL, Further Licenses 1 & 2, Façade photo, GPS pin & PII
             </AppText>
           </View>
-          <AppText variant="bodyMedium" colorType="brand">&gt;</AppText>
+          <ChevronRightSvg size={16} color={colors.text?.muted} />
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.linkRow}
           onPress={() => navigation.navigate('StaffList')}
         >
-          <View style={{ flex: 1 }}>
+          <UserOutlineIconSvg size={20} color={colors.brand?.primary} />
+          <View style={{ flex: 1, marginLeft: 10 }}>
             <AppText variant="bodyMediumMedium" colorType="primary">
               Staff Hierarchy & RBAC Permissions
             </AppText>
@@ -222,7 +243,7 @@ export const SettingsScreen = ({ navigation }) => {
               Configure logins, passwords, and 7 operational permissions
             </AppText>
           </View>
-          <AppText variant="bodyMedium" colorType="brand">&gt;</AppText>
+          <ChevronRightSvg size={16} color={colors.text?.muted} />
         </TouchableOpacity>
       </GlassCard>
 
@@ -260,6 +281,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: verticalScale(10),
+  },
   titleWithBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -291,7 +317,6 @@ const styles = StyleSheet.create({
   },
   linkRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: verticalScale(10),
     borderBottomWidth: 1,

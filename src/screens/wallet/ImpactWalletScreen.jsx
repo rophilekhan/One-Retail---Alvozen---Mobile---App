@@ -1,499 +1,390 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import Svg, { Path, Circle } from 'react-native-svg';
+import React, { useState, useMemo } from 'react';
 import {
-  AppScreenContainer,
-  AppText,
-  AppHeader,
-  GlassCard,
-  AppBadge,
-  AppButton,
-  AppModal,
-  AppInput,
-  AppToast,
-  MetricIconDisc,
-} from '../../components/core/index.js';
+  View,
+  ScrollView,
+  TouchableOpacity,
+  StyleSheet,
+  Dimensions,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import LinearGradient from 'react-native-linear-gradient';
 import { useTheme } from '../../theme/index.js';
-import { scale, verticalScale } from '../../theme/responsive.js';
-import { usePharmacyStore, PII_TIERS } from '../../store/usePharmacyStore.js';
+import { scale, verticalScale, scaleFont } from '../../theme/responsive.js';
+import { fontFamilies } from '../../theme/typography.js';
+import {
+  AppText,
+  AppButton,
+  AppBadge,
+} from '../../components/core/index.js';
+import {
+  ImpactHeroSection,
+  ImpactStatCard,
+  ImpactScoreModal,
+  TierLevelUpModal,
+  SelectWithdrawMethodModal,
+  WithdrawAccountDetailsModal,
+  WithdrawBankTransferModal,
+  EnterOTPModal,
+  EnterWithdrawalAmountModal,
+  ReviewConfirmWithdrawalModal,
+  PiiActivitiesCard,
+} from '../../components/wallet/index.js';
+import { WithdrawIcon } from '../../assets/vectors/ImpactIcons.jsx';
+import { usePharmacyStore } from '../../store/usePharmacyStore.js';
 
-const TIER_THRESHOLDS = [
-  { tier: 'General Trade', min: 0, max: 299, badge: 'muted' },
-  { tier: 'Established', min: 300, max: 599, badge: 'brand' },
-  { tier: 'Key Account', min: 600, max: 899, badge: 'accent' },
-  { tier: 'Flagship', min: 900, max: 1500, badge: 'success' },
-];
-
-const PRESET_AMOUNTS = [5000, 10000, 25000, 48500];
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 /**
- * ImpactWalletScreen - Pharmacy Impact Index & Financial Incentives
- * Mandated by ONERETAIL_PRD.md:
- * - Tiers: General Trade, Established, Key Account, Flagship
- * - PII points & real-time earnings split across QR Scans, Pharma Data Sharing & Digital Engagement
- * - Cashout modal for EasyPaisa, JazzCash, and Bank with tax documentation
+ * Dynamic Screen Background Gradients across tiers matching OneRx Figma screens
+ */
+const TIER_BACKGROUND_GRADIENTS = {
+  general_trade: {
+    light: ['#B0E7E1', '#99E1D6', '#C4EDE7', '#DBF4F1', '#D6F3EF', '#FFFFFF'],
+    dark: ['#181E1E', '#141D1C', '#1C1D1F', '#212524', '#161616', '#010101'],
+  },
+  emerging: {
+    light: ['#B0E7E1', '#99E1D6', '#C4EDE7', '#DBF4F1', '#D6F3EF', '#FFFFFF'],
+    dark: ['#181E1E', '#141D1C', '#1C1D1F', '#212524', '#161616', '#010101'],
+  },
+  established: {
+    light: ['#FEBA8B', '#FAA96A', '#FDAE75', '#FBDFCA', '#FEDCC3', '#FFFFFF'],
+    dark: ['#211813', '#20150F', '#221B13', '#26221F', '#161616', '#010101'],
+  },
+  key_account: {
+    light: ['#B0D7E8', '#9CCAE1', '#C6E2F0', '#D9EDF6', '#D6EAF3', '#FFFFFF'],
+    dark: ['#181C1F', '#151A1E', '#191D1C', '#202425', '#161616', '#010101'],
+  },
+  senior: {
+    light: ['#B0D7E8', '#9CCAE1', '#C6E2F0', '#D9EDF6', '#D6EAF3', '#FFFFFF'],
+    dark: ['#181C1F', '#151A1E', '#191D1C', '#202425', '#161616', '#010101'],
+  },
+  flagship: {
+    light: ['#F2DDFE', '#EFD2FE', '#EFDFF9', '#FAEDFF', '#FAEDFF', '#FFFFFF'],
+    dark: ['#1F1D20', '#1D1B20', '#1F1D20', '#262427', '#161616', '#010101'],
+  },
+  distinguished: {
+    light: ['#F2DDFE', '#EFD2FE', '#EFDFF9', '#FAEDFF', '#FAEDFF', '#FFFFFF'],
+    dark: ['#1F1D20', '#1D1B20', '#1F1D20', '#262427', '#161616', '#010101'],
+  },
+};
+
+/**
+ * ImpactWalletScreen
  *
- * @param {Object} props
- * @param {Object} props.navigation
+ * Pharmacy Impact Index (PII) & Financial Rewards screen:
+ * - Dynamic tier background radiant glow
+ * - ImpactHeroSection arc gauge
+ * - Points & Earnings stat cards
+ * - 3 Activity Pillars breakdown
+ * - Complete payout withdrawal workflow
  */
 export const ImpactWalletScreen = ({ navigation }) => {
-  const { colors, spacing, isDark } = useTheme();
+  const { colors, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const pharmacy = usePharmacyStore();
 
-  const piiScore = pharmacy.piiScore || 842;
-  const piiTier = pharmacy.piiTier || 'Key Account';
-  const walletBalance = pharmacy.walletBalance || 48500;
-  const pendingCashout = pharmacy.pendingCashout || 12000;
+  const currentTier = pharmacy.piiTier || 'key_account';
+  const piiScore = pharmacy.piiScore || 620;
 
-  // Cashout Modal State
-  const [cashoutModalVisible, setCashoutModalVisible] = useState(false);
-  const [cashoutChannel, setCashoutChannel] = useState('EASYPAISA'); // 'EASYPAISA' | 'JAZZCASH' | 'BANK'
-  const [cashoutAmount, setCashoutAmount] = useState('10000');
-  const [accountNumber, setAccountNumber] = useState('');
-  const [accountTitle, setAccountTitle] = useState('');
-  const [bankName, setBankName] = useState('Meezan Bank');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  // Background Gradient
+  const bgGradients = useMemo(() => {
+    const raw = String(currentTier).toLowerCase().replace(' ', '_');
+    const tierMap = TIER_BACKGROUND_GRADIENTS[raw] || TIER_BACKGROUND_GRADIENTS.key_account;
+    return isDark ? tierMap.dark : tierMap.light;
+  }, [currentTier, isDark]);
 
-  const handleQuickAmount = (amt) => {
-    setCashoutAmount(String(amt));
+  // Modal States
+  const [isScoreModalVisible, setIsScoreModalVisible] = useState(false);
+  const [isLevelUpModalVisible, setIsLevelUpModalVisible] = useState(false);
+  const [isWithdrawModalVisible, setIsWithdrawModalVisible] = useState(false);
+  const [selectedWithdrawMethod, setSelectedWithdrawMethod] = useState(null);
+  const [isAccountDetailsModalVisible, setIsAccountDetailsModalVisible] = useState(false);
+  const [isBankTransferModalVisible, setIsBankTransferModalVisible] = useState(false);
+  const [isOtpModalVisible, setIsOtpModalVisible] = useState(false);
+  const [isAmountModalVisible, setIsAmountModalVisible] = useState(false);
+  const [isReviewModalVisible, setIsReviewModalVisible] = useState(false);
+
+  const [enteredAccountNumber, setEnteredAccountNumber] = useState('0345-2102014');
+  const [withdrawalAmount, setWithdrawalAmount] = useState('15,000');
+  const [taxNtn, setTaxNtn] = useState('7819204-5');
+  const [bankDetails, setBankDetails] = useState({
+    bankName: 'Meezan Bank',
+    accountTitle: 'Al-Shifa Medicos',
+    accountNumber: '02040104819201',
+    ntnNumber: '7819204-5',
+  });
+
+  const handleSelectMethod = (method) => {
+    setSelectedWithdrawMethod(method);
+    setIsWithdrawModalVisible(false);
+
+    if (method.id === 'bank') {
+      setIsBankTransferModalVisible(true);
+    } else {
+      setIsAccountDetailsModalVisible(true);
+    }
   };
 
-  const handleCashoutSubmit = () => {
-    const amt = Number(cashoutAmount);
-    if (!amt || amt <= 0 || amt > walletBalance) {
-      AppToast.show({
-        title: 'Invalid Amount',
-        message: `Please enter an amount up to available balance PKR ${walletBalance.toLocaleString()}.`,
-        type: 'warning',
-      });
-      return;
-    }
+  const handleAccountContinue = (accountNumber, ntnNumber) => {
+    setEnteredAccountNumber(accountNumber);
+    if (ntnNumber) setTaxNtn(ntnNumber);
+    setIsAccountDetailsModalVisible(false);
+    setIsOtpModalVisible(true);
+  };
 
-    if (!accountNumber.trim() || !accountTitle.trim()) {
-      AppToast.show({
-        title: 'Missing Account Details',
-        message: 'Please provide account title and number/IBAN.',
-        type: 'warning',
-      });
-      return;
-    }
+  const handleBankContinue = ({ bankName, accountTitle, accountNumber, ntnNumber }) => {
+    setBankDetails({ bankName, accountTitle, accountNumber, ntnNumber });
+    setEnteredAccountNumber(accountNumber);
+    if (ntnNumber) setTaxNtn(ntnNumber);
+    setIsBankTransferModalVisible(false);
+    setIsOtpModalVisible(true);
+  };
 
-    setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
-      setCashoutModalVisible(false);
-      AppToast.show({
-        title: 'Cashout Request Submitted',
-        message: `PKR ${amt.toLocaleString()} withdrawal queued via ${cashoutChannel}. Tax documentation generated.`,
-        type: 'success',
-      });
-    }, 700);
+  const handleOtpVerify = () => {
+    setIsOtpModalVisible(false);
+    setIsAmountModalVisible(true);
+  };
+
+  const handleAmountContinue = (amount) => {
+    setWithdrawalAmount(amount);
+    setIsAmountModalVisible(false);
+    setIsReviewModalVisible(true);
+  };
+
+  const handleFinalConfirm = () => {
+    setIsReviewModalVisible(false);
   };
 
   return (
-    <AppScreenContainer scrollable={true} withAmbientGlow={true} withBottomNavClearance={true}>
-      <AppHeader
-        title="Impact Index & Wallet"
-        onBack={() => navigation.goBack()}
-        showBack={true}
-        rightElement={
+    <View style={styles.container}>
+      <LinearGradient
+        colors={bgGradients}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 0.95 }}
+        style={styles.gradientBg}
+      >
+        {/* Top Header */}
+        <View style={[styles.headerRow, { paddingTop: insets.top + verticalScale(8) }]}>
+          <View>
+            <AppText style={[styles.headerTitle, { color: colors.text.primary }]}>
+              Impact Index & Wallet
+            </AppText>
+            <AppText style={[styles.headerSubtitle, { color: isDark ? '#94A3B8' : '#64748B' }]}>
+              Verified Pharmacy Performance
+            </AppText>
+          </View>
+
           <TouchableOpacity
-            activeOpacity={0.7}
+            activeOpacity={0.8}
             onPress={() => navigation.navigate('PharmacyProfile')}
+            style={styles.profileBadgeBtn}
           >
             <AppBadge label="Profile &gt;" variant="brand" />
           </TouchableOpacity>
-        }
+        </View>
+
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: verticalScale(100) }]}
+        >
+          {/* 1. Arc Gauge Hero Section */}
+          <ImpactHeroSection
+            tier={currentTier}
+            score={piiScore}
+            onPressScore={() => setIsScoreModalVisible(true)}
+            onPressMilestone={() => setIsLevelUpModalVisible(true)}
+          />
+
+          {/* 2. Stat Cards Row: Points & Earnings */}
+          <View style={styles.statsRow}>
+            <View style={{ flex: 1 }}>
+              <ImpactStatCard
+                title="POINTS EARNED"
+                amount="12,450"
+                suffix="pts"
+                icon="points"
+                onPress={() => navigation.navigate('PointsEarned')}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <ImpactStatCard
+                title="TOTAL EARNINGS"
+                amount="48,500"
+                suffix="PKR"
+                icon="earnings"
+                onPress={() => navigation.navigate('Earnings')}
+              />
+            </View>
+          </View>
+
+          {/* 3. Withdraw Action Button */}
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => setIsWithdrawModalVisible(true)}
+            style={[
+              styles.withdrawActionBtn,
+              {
+                backgroundColor: isDark
+                  ? (colors.brand?.primary || '#009BA9')
+                  : (colors.brand?.primaryDark || '#0F4761'),
+              },
+            ]}
+          >
+            <WithdrawIcon size={scale(18)} color="#FFFFFF" />
+            <AppText style={styles.withdrawActionBtnText}>
+              Withdraw Earnings Payout
+            </AppText>
+          </TouchableOpacity>
+
+          {/* 4. 3 Activity Pillars */}
+          <View style={styles.activitiesWrapper}>
+            <PiiActivitiesCard piiScore={piiScore} />
+          </View>
+        </ScrollView>
+      </LinearGradient>
+
+      {/* Modals Flow */}
+      <ImpactScoreModal
+        visible={isScoreModalVisible}
+        onClose={() => setIsScoreModalVisible(false)}
+        tier={currentTier}
+        score={piiScore}
       />
 
-      {/* 1. PII Tier Status Card */}
-      <GlassCard style={styles.card}>
-        <View style={styles.tierHeaderRow}>
-          <View style={{ flex: 1 }}>
-            <AppText variant="caption" colorType="muted">Current Tier Status</AppText>
-            <AppText variant="headlineMedium" colorType="primary">
-              {piiTier}
-            </AppText>
-          </View>
-          <MetricIconDisc variant="gold" size={48}>
-            <Svg width={scale(24)} height={scale(24)} viewBox="0 0 24 24" fill="none">
-              <Path
-                d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
-                stroke={colors.text.inverse || '#FFFFFF'}
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </Svg>
-          </MetricIconDisc>
-        </View>
+      <TierLevelUpModal
+        visible={isLevelUpModalVisible}
+        onClose={() => setIsLevelUpModalVisible(false)}
+        tier={currentTier}
+      />
 
-        {/* Tier Hierarchy Progress */}
-        <View style={styles.tierBarWrap}>
-          {TIER_THRESHOLDS.map((t, idx) => {
-            const isCurrent = piiScore >= t.min && piiScore <= t.max;
-            const isPassed = piiScore > t.max;
+      <SelectWithdrawMethodModal
+        visible={isWithdrawModalVisible}
+        onClose={() => setIsWithdrawModalVisible(false)}
+        onSelectMethod={handleSelectMethod}
+      />
 
-            return (
-              <View key={idx} style={styles.tierSegment}>
-                <View
-                  style={[
-                    styles.segmentLine,
-                    {
-                      backgroundColor: isPassed
-                        ? colors.brand?.primary
-                        : isCurrent
-                        ? colors.brand?.accent
-                        : isDark
-                        ? 'rgba(255, 255, 255, 0.1)'
-                        : 'rgba(0, 0, 0, 0.08)',
-                    },
-                  ]}
-                />
-                <AppText
-                  variant="caption"
-                  colorType={isCurrent ? 'accent' : isPassed ? 'brand' : 'muted'}
-                  style={{ marginTop: 4, fontWeight: isCurrent ? '700' : '400', fontSize: scale(10) }}
-                  numberOfLines={1}
-                >
-                  {t.tier}
-                </AppText>
-              </View>
-            );
-          })}
-        </View>
-      </GlassCard>
+      <WithdrawAccountDetailsModal
+        visible={isAccountDetailsModalVisible}
+        onClose={() => setIsAccountDetailsModalVisible(false)}
+        onBack={() => {
+          setIsAccountDetailsModalVisible(false);
+          setIsWithdrawModalVisible(true);
+        }}
+        onContinue={handleAccountContinue}
+        selectedMethod={selectedWithdrawMethod}
+      />
 
-      {/* 2. PII Points Breakdown (PRD 3 Activities) */}
-      <GlassCard style={styles.card}>
-        <View style={styles.sectionHeader}>
-          <View style={{ flex: 1 }}>
-            <AppText variant="titleMedium" colorType="primary">
-              PII Points System ({piiScore} pts)
-            </AppText>
-            <AppText variant="caption" colorType="muted">
-              Composite platform score earned across 3 core activities
-            </AppText>
-          </View>
-          <AppBadge label="Top 8% Peer Tier" variant="success" />
-        </View>
+      <WithdrawBankTransferModal
+        visible={isBankTransferModalVisible}
+        onClose={() => setIsBankTransferModalVisible(false)}
+        onBack={() => {
+          setIsBankTransferModalVisible(false);
+          setIsWithdrawModalVisible(true);
+        }}
+        onContinue={handleBankContinue}
+      />
 
-        {/* Driver 1: Digital Prescription QR Scans */}
-        <View style={[styles.activityRow, { borderBottomColor: colors.border?.subtle }]}>
-          <MetricIconDisc variant="teal" size={36} marginRight={10}>
-            <Svg width={scale(18)} height={scale(18)} viewBox="0 0 24 24" fill="none">
-              <Path d="M9 11l3 3L22 4" stroke="#FFF" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-              <Path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke="#FFF" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-            </Svg>
-          </MetricIconDisc>
-          <View style={{ flex: 1 }}>
-            <AppText variant="bodyMediumMedium" colorType="primary">Digital Prescription QR Scans</AppText>
-            <AppText variant="caption" colorType="muted">34 Scans confirmed this month</AppText>
-          </View>
-          <AppBadge label="+340 Pts" variant="brand" />
-        </View>
+      <EnterOTPModal
+        visible={isOtpModalVisible}
+        onClose={() => setIsOtpModalVisible(false)}
+        onBack={() => {
+          setIsOtpModalVisible(false);
+          if (selectedWithdrawMethod?.id === 'bank') {
+            setIsBankTransferModalVisible(true);
+          } else {
+            setIsAccountDetailsModalVisible(true);
+          }
+        }}
+        onVerify={handleOtpVerify}
+      />
 
-        {/* Driver 2: Data Sharing with Pharma */}
-        <View style={[styles.activityRow, { borderBottomColor: colors.border?.subtle }]}>
-          <MetricIconDisc variant="purple" size={36} marginRight={10}>
-            <Svg width={scale(18)} height={scale(18)} viewBox="0 0 24 24" fill="none">
-              <Path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8" stroke="#FFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              <Path d="M16 6l-4-4-4 4" stroke="#FFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              <Path d="M12 2v13" stroke="#FFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </Svg>
-          </MetricIconDisc>
-          <View style={{ flex: 1 }}>
-            <AppText variant="bodyMediumMedium" colorType="primary">Data Sharing with Pharma</AppText>
-            <AppText variant="caption" colorType="muted">28 Consecutive days closing sync</AppText>
-          </View>
-          <AppBadge label="+280 Pts" variant="brand" />
-        </View>
+      <EnterWithdrawalAmountModal
+        visible={isAmountModalVisible}
+        onClose={() => setIsAmountModalVisible(false)}
+        onBack={() => {
+          setIsAmountModalVisible(false);
+          setIsOtpModalVisible(true);
+        }}
+        onContinue={handleAmountContinue}
+        availableBalance="48,500"
+      />
 
-        {/* Driver 3: Digital Pharma Engagement */}
-        <View style={styles.activityRow}>
-          <MetricIconDisc variant="gold" size={36} marginRight={10}>
-            <Svg width={scale(18)} height={scale(18)} viewBox="0 0 24 24" fill="none">
-              <Path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="#FFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </Svg>
-          </MetricIconDisc>
-          <View style={{ flex: 1 }}>
-            <AppText variant="bodyMediumMedium" colorType="primary">Digital Pharma Engagement</AppText>
-            <AppText variant="caption" colorType="muted">8 Surveys & clinical modules completed</AppText>
-          </View>
-          <AppBadge label="+222 Pts" variant="brand" />
-        </View>
-      </GlassCard>
-
-      {/* 3. Real-Time Earnings Dashboard (Financial Incentive System) */}
-      <GlassCard style={styles.card}>
-        <View style={styles.sectionHeader}>
-          <View style={{ flex: 1 }}>
-            <AppText variant="titleMedium" colorType="primary">
-              Financial Incentive Earnings
-            </AppText>
-            <AppText variant="caption" colorType="muted">
-              Live accrued rewards with tax documentation
-            </AppText>
-          </View>
-        </View>
-
-        {/* Total Wallet & Pending */}
-        <View style={styles.walletMetricsRow}>
-          <View style={{ flex: 1 }}>
-            <AppText variant="caption" colorType="muted">Available to Cashout</AppText>
-            <AppText variant="headlineMedium" colorType="primary">
-              PKR {walletBalance.toLocaleString()}
-            </AppText>
-          </View>
-
-          <View style={{ flex: 1, alignItems: 'flex-end' }}>
-            <AppText variant="caption" colorType="muted">Pending Clearance</AppText>
-            <AppText variant="titleLarge" colorType="accent">
-              PKR {pendingCashout.toLocaleString()}
-            </AppText>
-          </View>
-        </View>
-
-        {/* Earnings Split Across 3 Activities (PRD Mandated) */}
-        <View style={[styles.earningsSplitBox, { backgroundColor: isDark ? 'rgba(255,255,255,0.025)' : 'rgba(0,0,0,0.02)' }]}>
-          <View style={styles.splitRow}>
-            <AppText variant="bodySmall" colorType="muted">Rx Scans Earnings:</AppText>
-            <AppText variant="bodySmallMedium" colorType="primary">PKR 24,500</AppText>
-          </View>
-          <View style={styles.splitRow}>
-            <AppText variant="bodySmall" colorType="muted">Pharma Data Sharing:</AppText>
-            <AppText variant="bodySmallMedium" colorType="primary">PKR 14,000</AppText>
-          </View>
-          <View style={styles.splitRow}>
-            <AppText variant="bodySmall" colorType="muted">Pharma Engagement:</AppText>
-            <AppText variant="bodySmallMedium" colorType="primary">PKR 10,000</AppText>
-          </View>
-        </View>
-
-        <View style={{ height: spacing.sm }} />
-
-        {/* Cashout CTA Button */}
-        <AppButton
-          variant="accent"
-          title="Cashout via EasyPaisa / Bank"
-          onPress={() => setCashoutModalVisible(true)}
-        />
-      </GlassCard>
-
-      <View style={{ height: verticalScale(20) }} />
-
-      {/* 4. Cashout Redemption Modal */}
-      <AppModal
-        visible={cashoutModalVisible}
-        type="bottomSheet"
-        title="Redeem Earnings"
-        scrollable={true}
-        onClose={() => setCashoutModalVisible(false)}
-      >
-        <View style={styles.modalContent}>
-          <AppText variant="caption" colorType="muted" style={{ marginBottom: 12 }}>
-            Withdraw earnings instantly with FBR-compliant Withholding Tax (WHT) documentation.
-          </AppText>
-
-          {/* Channel Selector: EasyPaisa | JazzCash | Bank */}
-          <View style={styles.channelRow}>
-            {[
-              { id: 'EASYPAISA', label: 'EasyPaisa' },
-              { id: 'JAZZCASH', label: 'JazzCash' },
-              { id: 'BANK', label: 'Bank Transfer' },
-            ].map((ch) => (
-              <TouchableOpacity
-                key={ch.id}
-                onPress={() => setCashoutChannel(ch.id)}
-                style={[
-                  styles.channelTab,
-                  {
-                    backgroundColor:
-                      cashoutChannel === ch.id
-                        ? colors.brand?.primary
-                        : isDark
-                        ? 'rgba(255,255,255,0.05)'
-                        : 'rgba(0,0,0,0.05)',
-                  },
-                ]}
-              >
-                <AppText
-                  variant="caption"
-                  colorType={cashoutChannel === ch.id ? 'inverse' : 'primary'}
-                  style={{ fontWeight: cashoutChannel === ch.id ? '700' : '400' }}
-                >
-                  {ch.label}
-                </AppText>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          {/* Quick Preset Amount Chips */}
-          <AppText variant="caption" colorType="muted" style={{ marginTop: 10, marginBottom: 4 }}>
-            Preset Withdrawal Amount:
-          </AppText>
-          <View style={styles.presetsRow}>
-            {PRESET_AMOUNTS.map((amt) => (
-              <TouchableOpacity
-                key={amt}
-                onPress={() => handleQuickAmount(amt)}
-                style={[
-                  styles.presetChip,
-                  {
-                    borderColor: cashoutAmount === String(amt) ? colors.brand?.accent : colors.border?.subtle,
-                    backgroundColor: cashoutAmount === String(amt) ? 'rgba(251, 107, 3, 0.1)' : 'transparent',
-                  },
-                ]}
-              >
-                <AppText variant="caption" colorType={cashoutAmount === String(amt) ? 'accent' : 'primary'}>
-                  PKR {amt.toLocaleString()}
-                </AppText>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          {/* Amount Input */}
-          <AppInput
-            label="Withdrawal Amount (PKR)"
-            placeholder="e.g. 10000"
-            value={cashoutAmount}
-            onChangeText={setCashoutAmount}
-            keyboardType="number-pad"
-          />
-
-          {/* Dynamic Fields Based on Channel */}
-          {cashoutChannel === 'BANK' && (
-            <AppInput
-              label="Bank Name"
-              placeholder="e.g. Meezan Bank / HBL"
-              value={bankName}
-              onChangeText={setBankName}
-            />
-          )}
-
-          <AppInput
-            label={cashoutChannel === 'BANK' ? 'Account Number / 24-Digit IBAN' : 'Mobile Account Number'}
-            placeholder={cashoutChannel === 'BANK' ? 'PK00MEZN0000000000000000' : '03001234567'}
-            value={accountNumber}
-            onChangeText={setAccountNumber}
-            keyboardType={cashoutChannel === 'BANK' ? 'default' : 'phone-pad'}
-          />
-
-          <AppInput
-            label="Account Title (Must Match CNIC / DSL)"
-            placeholder="e.g. City Meds Pharmacy"
-            value={accountTitle}
-            onChangeText={setAccountTitle}
-          />
-
-          {/* Tax Documentation Notice */}
-          <View style={[styles.taxNoticeBox, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)' }]}>
-            <AppText variant="caption" colorType="muted">
-              Tax Document: An electronic Section 236H WHT tax deduction certificate will be generated and logged under your DSL tax profile.
-            </AppText>
-          </View>
-
-          <View style={{ height: spacing.md }} />
-          <AppButton
-            variant="primary"
-            title="Submit Cashout Request"
-            loading={isSubmitting}
-            onPress={handleCashoutSubmit}
-          />
-        </View>
-      </AppModal>
-    </AppScreenContainer>
+      <ReviewConfirmWithdrawalModal
+        visible={isReviewModalVisible}
+        onClose={() => setIsReviewModalVisible(false)}
+        onBack={() => {
+          setIsReviewModalVisible(false);
+          setIsAmountModalVisible(true);
+        }}
+        onConfirm={handleFinalConfirm}
+        selectedMethod={selectedWithdrawMethod}
+        withdrawalData={{
+          methodName: selectedWithdrawMethod?.name,
+          isBankTransfer: selectedWithdrawMethod?.id === 'bank',
+          bankName: bankDetails.bankName,
+          accountTitle: bankDetails.accountTitle,
+          accountNumber: enteredAccountNumber,
+          ntnNumber: taxNtn,
+          amount: withdrawalAmount,
+        }}
+      />
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  card: {
-    width: '100%',
-    marginVertical: verticalScale(6),
-    flexDirection: 'column',
-    alignItems: 'stretch',
-  },
-  tierHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: verticalScale(10),
-  },
-  tierBarWrap: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: verticalScale(6),
-  },
-  tierSegment: {
+  container: {
     flex: 1,
-    marginHorizontal: scale(2),
-    alignItems: 'center',
   },
-  segmentLine: {
-    width: '100%',
-    height: 6,
-    borderRadius: 3,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: verticalScale(10),
-  },
-  activityRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: verticalScale(8),
-    borderBottomWidth: 1,
-  },
-  walletMetricsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginVertical: verticalScale(6),
-  },
-  earningsSplitBox: {
-    padding: scale(10),
-    borderRadius: scale(10),
-    marginVertical: verticalScale(8),
-  },
-  splitRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 2,
-  },
-  modalContent: {
-    paddingBottom: verticalScale(16),
-  },
-  channelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: verticalScale(10),
-  },
-  channelTab: {
+  gradientBg: {
     flex: 1,
-    paddingVertical: verticalScale(8),
-    alignItems: 'center',
-    borderRadius: scale(8),
-    marginHorizontal: scale(2),
   },
-  presetsRow: {
+  headerRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: verticalScale(6),
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: scale(20),
+    paddingBottom: verticalScale(12),
   },
-  presetChip: {
-    borderWidth: 1,
-    paddingHorizontal: scale(10),
-    paddingVertical: verticalScale(5),
-    borderRadius: scale(8),
-    marginRight: scale(6),
-    marginBottom: verticalScale(6),
+  headerTitle: {
+    fontSize: scaleFont(20),
+    fontFamily: fontFamilies.primaryBold,
+    fontWeight: '700',
   },
-  taxNoticeBox: {
-    padding: scale(8),
-    borderRadius: scale(8),
-    marginTop: verticalScale(4),
+  headerSubtitle: {
+    fontSize: scaleFont(12.5),
+    fontFamily: fontFamilies.primaryRegular,
+    marginTop: verticalScale(2),
+  },
+  profileBadgeBtn: {
+    paddingVertical: verticalScale(4),
+  },
+  scrollContent: {
+    paddingHorizontal: scale(20),
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: scale(12),
+    marginTop: verticalScale(12),
+    marginBottom: verticalScale(14),
+  },
+  withdrawActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: verticalScale(50),
+    borderRadius: scale(999),
+    gap: scale(8),
+    marginBottom: verticalScale(16),
+  },
+  withdrawActionBtnText: {
+    color: '#FFFFFF',
+    fontSize: scaleFont(15),
+    fontFamily: fontFamilies.primaryBold,
+    fontWeight: '700',
+  },
+  activitiesWrapper: {
+    marginBottom: verticalScale(20),
   },
 });
 

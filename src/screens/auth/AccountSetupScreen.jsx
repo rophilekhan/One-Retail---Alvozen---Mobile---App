@@ -1,170 +1,258 @@
 import React, { useState } from 'react';
-import { View, StyleSheet } from 'react-native';
-import { useTheme } from '../../theme/index.js';
-import { verticalScale } from '../../theme/responsive.js';
 import {
-  AppScreenContainer,
+  View,
+  StyleSheet,
+  ScrollView,
+  Keyboard,
+  Platform,
+  KeyboardAvoidingView,
+} from 'react-native';
+import { useTheme } from '../../theme/index.js';
+import { scale, verticalScale, scaleFont } from '../../theme/responsive.js';
+import {
   AppText,
   AppInput,
   AppButton,
-  AppHeader,
-  GlassCard,
+  AppScreenContainer,
+  RegistrationProgress,
+  AppBackButton,
   AppToast,
-  AppBadge,
 } from '../../components/core/index.js';
+import {
+  UserOutlineIcon,
+  MailOutlineIcon,
+  PhoneOutlineIcon,
+  LockOutlineIcon,
+} from '../../assets/vectors/index.js';
 
 /**
- * AccountSetupScreen - Pharmacy Registration Step 1
- * Gathers Phone, Email, Username and Password as required by ONERETAIL_PRD.md
+ * AccountSetupScreen - Step 1 of Onboarding
+ * Port 1:1 from OneRx AccountSetupScreen
+ * Captures Contact Name, Username, Email, Phone, Password.
  *
  * @param {Object} props
  * @param {Object} props.navigation
  */
 export const AccountSetupScreen = ({ navigation }) => {
-  const { spacing } = useTheme();
+  const { colors } = useTheme();
 
-  const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [form, setForm] = useState({
+    fullName: '',
+    username: '',
+    email: '',
+    phone: '',
+    password: '',
+  });
 
-  const handleContinue = () => {
-    const trimmedPhone = phone.trim();
-    const trimmedEmail = email.trim();
-    const trimmedUser = username.trim();
-    const trimmedPass = password.trim();
+  const [errors, setErrors] = useState({});
 
-    if (!trimmedPhone || !trimmedEmail || !trimmedUser || !trimmedPass) {
+  const handleNext = () => {
+    const newErrors = {};
+
+    if (!form.fullName.trim()) newErrors.fullName = 'Contact name is required';
+    if (!form.username.trim()) newErrors.username = 'Pharmacy username is required';
+    if (!form.email.trim() || !form.email.includes('@')) newErrors.email = 'Valid email is required';
+    if (!form.phone.trim() || form.phone.length < 10) newErrors.phone = 'Valid phone number is required';
+    if (!form.password || form.password.length < 6) newErrors.password = 'Password must be at least 6 characters';
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       AppToast.show({
-        title: 'Missing Fields',
-        message: 'Please complete all fields to proceed with pharmacy registration.',
-        type: 'warning',
-      });
-      return;
-    }
-
-    if (trimmedPhone.length < 10) {
-      AppToast.show({
-        title: 'Invalid Phone Number',
-        message: 'Please enter a valid 11-digit mobile number.',
+        title: 'Incomplete Details',
+        message: 'Please complete all fields to proceed.',
         type: 'error',
       });
       return;
     }
 
-    if (!trimmedEmail.includes('@') || !trimmedEmail.includes('.')) {
-      AppToast.show({
-        title: 'Invalid Email',
-        message: 'Please provide a valid email address.',
-        type: 'error',
-      });
-      return;
-    }
+    setErrors({});
+    Keyboard.dismiss();
 
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      AppToast.show({
-        title: 'OTP Dispatched',
-        message: `Verification code sent to ${trimmedPhone} and ${trimmedEmail}.`,
-        type: 'info',
-      });
-      navigation.navigate('OtpVerification', {
-        phone: trimmedPhone,
-        email: trimmedEmail,
-        username: trimmedUser,
-        password: trimmedPass,
-      });
-    }, 400);
+    navigation.navigate('OtpVerification', {
+      phone: form.phone,
+      email: form.email,
+      userData: form,
+    });
   };
 
   return (
-    <AppScreenContainer keyboardAvoiding={true} scrollable={true} withAmbientGlow={true}>
-      <AppHeader title="Pharmacy Registration" onBack={() => navigation.goBack()} />
+    <AppScreenContainer withAmbientGlow={true} keyboardAvoiding={false} withHorizontalPadding={false}>
+      <KeyboardAvoidingView
+        style={styles.safeArea}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? verticalScale(10) : 0}
+      >
+        {/* Progress Bar Header: Step 1 of 4 */}
+        <RegistrationProgress currentStep={1} totalSteps={4} />
 
-      <View style={styles.content}>
-        <View style={styles.stepHeader}>
-          <AppBadge label="Step 1 of 4" variant="brand" />
-          <AppText variant="headlineMedium" colorType="primary" style={styles.title}>
-            Account Setup
-          </AppText>
-          <AppText variant="bodyMedium" colorType="muted">
-            Create your primary administrator credentials for OneRetail.
-          </AppText>
-        </View>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Header & Title Section */}
+          <View style={styles.headerContainer}>
+            <View style={styles.backButtonWrapper}>
+              <AppBackButton onPress={() => navigation.goBack()} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <AppText
+                variant="headlineLarge"
+                style={[
+                  styles.title,
+                  {
+                    color: colors.text?.primary,
+                    marginBottom: verticalScale(10),
+                    fontFamily: 'DMSans-Medium',
+                    fontSize: scaleFont(36),
+                    lineHeight: scaleFont(42),
+                  },
+                ]}
+              >
+                Let's set up your{'\n'}pharmacy access
+              </AppText>
+              <AppText
+                variant="bodyLarge"
+                style={[
+                  styles.subtitle,
+                  {
+                    color: '#787878',
+                    fontFamily: 'DMSans-Regular',
+                    fontSize: scaleFont(14),
+                    lineHeight: scaleFont(20),
+                  },
+                ]}
+              >
+                Add your phone number and email so we can create your secure OneRetail account.
+              </AppText>
+            </View>
+          </View>
 
-        <GlassCard style={styles.card}>
-          <View style={styles.formContent}>
+          {/* Form Inputs Section */}
+          <View style={styles.formSection}>
+            {/* 1. Full Name / Pharmacist */}
             <AppInput
-              label="Mobile Phone Number"
-              placeholder="e.g. 03001234567"
-              value={phone}
-              onChangeText={setPhone}
-              keyboardType="phone-pad"
-              maxLength={11}
+              placeholder="Pharmacist / Contact Name"
+              value={form.fullName}
+              autoCapitalize="words"
+              onChangeText={(v) => {
+                setForm((prev) => ({ ...prev, fullName: v }));
+                if (errors.fullName) setErrors((prev) => ({ ...prev, fullName: '' }));
+              }}
+              iconLeft={<UserOutlineIcon size={scale(20)} color={colors.text?.primary} />}
               iconTone="teal"
+              error={errors.fullName}
             />
 
+            {/* 2. Pharmacy Username */}
             <AppInput
-              label="Pharmacy Email Address"
-              placeholder="e.g. contact@citymeds.pk"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
+              placeholder="Pharmacy Username"
+              value={form.username}
               autoCapitalize="none"
-              iconTone="purple"
-            />
-
-            <AppInput
-              label="Choose Username"
-              placeholder="e.g. city_meds_admin"
-              value={username}
-              onChangeText={setUsername}
-              autoCapitalize="none"
+              autoCorrect={false}
+              onChangeText={(v) => {
+                const clean = v.replace(/[^a-zA-Z0-9_]/g, '');
+                setForm((prev) => ({ ...prev, username: clean }));
+                if (errors.username) setErrors((prev) => ({ ...prev, username: '' }));
+              }}
+              iconLeft={<UserOutlineIcon size={scale(20)} color={colors.text?.primary} />}
               iconTone="neutral"
+              error={errors.username}
             />
 
+            {/* 3. Email Address */}
             <AppInput
-              label="Create Password"
-              placeholder="Minimum 8 characters"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={true}
-              iconTone="gold"
+              placeholder="Pharmacy Email Address"
+              value={form.email}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="email-address"
+              onChangeText={(v) => {
+                setForm((prev) => ({ ...prev, email: v }));
+                if (errors.email) setErrors((prev) => ({ ...prev, email: '' }));
+              }}
+              iconLeft={<MailOutlineIcon size={scale(20)} color={colors.text?.primary} />}
+              iconTone="purple"
+              error={errors.email}
             />
 
-            <View style={{ height: spacing.lg }} />
+            {/* 4. Phone Number */}
+            <AppInput
+              placeholder="Mobile Phone Number"
+              value={form.phone}
+              keyboardType="phone-pad"
+              onChangeText={(v) => {
+                setForm((prev) => ({ ...prev, phone: v }));
+                if (errors.phone) setErrors((prev) => ({ ...prev, phone: '' }));
+              }}
+              iconLeft={<PhoneOutlineIcon size={scale(20)} color={colors.text?.primary} />}
+              iconTone="teal"
+              error={errors.phone}
+            />
 
-            <AppButton
-              variant="primary"
-              title="Continue to OTP"
-              loading={isLoading}
-              onPress={handleContinue}
+            {/* 5. Account Password */}
+            <AppInput
+              placeholder="Account Password"
+              value={form.password}
+              secureTextEntry={true}
+              onChangeText={(v) => {
+                setForm((prev) => ({ ...prev, password: v }));
+                if (errors.password) setErrors((prev) => ({ ...prev, password: '' }));
+              }}
+              iconLeft={<LockOutlineIcon size={scale(20)} color={colors.text?.primary} />}
+              iconTone="gold"
+              error={errors.password}
             />
           </View>
-        </GlassCard>
-      </View>
+
+          {/* Bottom Action Button */}
+          <View style={styles.bottomSection}>
+            <AppButton
+              variant="primary"
+              title="Continue"
+              onPress={handleNext}
+              style={{ width: '100%' }}
+            />
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </AppScreenContainer>
   );
 };
 
 const styles = StyleSheet.create({
-  content: {
-    paddingVertical: verticalScale(12),
+  safeArea: {
+    flex: 1,
   },
-  stepHeader: {
-    marginBottom: verticalScale(16),
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: scale(20),
+    paddingBottom: verticalScale(32),
+  },
+  headerContainer: {
+    flexDirection: 'row',
+    marginTop: verticalScale(8),
+    marginBottom: verticalScale(20),
+  },
+  backButtonWrapper: {
+    marginLeft: scale(-12),
+    marginRight: scale(8),
+    marginTop: verticalScale(4),
   },
   title: {
-    marginTop: verticalScale(8),
-    marginBottom: verticalScale(4),
+    letterSpacing: -1,
   },
-  card: {
-    width: '100%',
+  subtitle: {},
+  formSection: {
+    marginBottom: verticalScale(24),
   },
-  formContent: {
-    width: '100%',
+  bottomSection: {
+    marginTop: 'auto',
+    paddingTop: verticalScale(12),
   },
 });
 

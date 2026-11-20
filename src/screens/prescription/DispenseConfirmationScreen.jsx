@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import {
   AppScreenContainer,
   AppText,
@@ -17,6 +16,12 @@ import { scale, verticalScale } from '../../theme/responsive.js';
 import { useDispenseStore } from '../../store/useDispenseStore.js';
 import { usePharmacyStore } from '../../store/usePharmacyStore.js';
 import { SubstituteSearchModal } from './SubstituteSearchModal.jsx';
+import {
+  PillIcon,
+  PillsMedicineIcon,
+  TransferArrowsIconSvg,
+  PointsStarIcon,
+} from '../../assets/vectors/index.js';
 
 /**
  * DispenseConfirmationScreen - Non-Integrated Dispense & SKU Input
@@ -24,6 +29,7 @@ import { SubstituteSearchModal } from './SubstituteSearchModal.jsx';
  * - Enter quantity dispensed against each SKU
  * - If a Brand is substituted, search and select substitute Brand & quantity
  * - Real-time calculation of TP, MRP, Margin, and PII points award
+ * Features exact SVG vector icons (Zero emoji/text placeholders).
  *
  * @param {Object} props
  * @param {Object} props.navigation
@@ -131,9 +137,12 @@ export const DispenseConfirmationScreen = ({ navigation }) => {
           <GlassCard key={item.id} style={styles.itemCard}>
             <View style={styles.itemTopRow}>
               <View style={{ flex: 1, paddingRight: 8 }}>
-                <AppText variant="bodyLargeMedium" colorType="primary">
-                  {displayName}
-                </AppText>
+                <View style={styles.displayNameRow}>
+                  <PillsMedicineIcon size={18} color={colors.brand?.primary} style={{ marginRight: 6 }} />
+                  <AppText variant="bodyLargeMedium" colorType="primary">
+                    {displayName}
+                  </AppText>
+                </View>
                 <AppText variant="caption" colorType="muted">
                   Generic: {item.genericName}
                 </AppText>
@@ -142,7 +151,8 @@ export const DispenseConfirmationScreen = ({ navigation }) => {
                 </AppText>
 
                 {isSubstituted && (
-                  <View style={{ marginTop: 4 }}>
+                  <View style={styles.substitutedBadgeRow}>
+                    <TransferArrowsIconSvg size={12} color={colors.brand?.accent} style={{ marginRight: 4 }} />
                     <AppBadge
                       label={`Substituted (${item.substituteReason || 'Out of Stock'})`}
                       variant="accent"
@@ -205,18 +215,37 @@ export const DispenseConfirmationScreen = ({ navigation }) => {
           <AppText variant="bodyMediumMedium" colorType="primary">PKR {totalMRP.toLocaleString()}</AppText>
         </View>
 
-        <View style={[styles.summaryRow, styles.marginRow, { borderTopColor: colors.border?.subtle }]}>
-          <AppText variant="titleMedium" colorType="brand">Pharmacy Margin:</AppText>
-          <AppText variant="titleMedium" colorType="brand">PKR {grossMargin.toLocaleString()}</AppText>
+        <View style={[styles.summaryDivider, { backgroundColor: colors.border?.subtle }]} />
+
+        <View style={styles.summaryRow}>
+          <AppText variant="bodyLargeMedium" colorType="primary">Gross Retail Margin:</AppText>
+          <AppText variant="bodyLargeMedium" colorType="success">PKR {grossMargin.toLocaleString()}</AppText>
+        </View>
+      </GlassCard>
+
+      {/* PII Reward Card */}
+      <GlassCard style={styles.card}>
+        <View style={styles.rewardRow}>
+          <MetricIconDisc variant="gold" size={40} marginRight={10}>
+            <PointsStarIcon size={20} color="#FFFFFF" />
+          </MetricIconDisc>
+          <View style={{ flex: 1 }}>
+            <AppText variant="bodyMediumMedium" colorType="primary">
+              Impact Rewards Earned
+            </AppText>
+            <AppText variant="caption" colorType="muted">
+              +10 PII Points & +PKR 50 Wallet balance on confirmation
+            </AppText>
+          </View>
+          <AppBadge label="+10 Pts" variant="accent" />
         </View>
       </GlassCard>
 
       <View style={{ height: spacing.md }} />
 
-      {/* Confirm Button */}
       <AppButton
         variant="primary"
-        title="Confirm & Log Dispense"
+        title="Confirm Prescription Dispense"
         loading={isSubmitting}
         onPress={handleConfirmDispense}
       />
@@ -245,46 +274,54 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     marginTop: verticalScale(12),
-    marginBottom: verticalScale(4),
+    marginBottom: verticalScale(6),
   },
   itemCard: {
     width: '100%',
-    marginVertical: verticalScale(6),
-    flexDirection: 'column',
-    alignItems: 'stretch',
+    marginVertical: verticalScale(5),
   },
   itemTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  displayNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  substitutedBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
   qtyBox: {
-    width: scale(90),
+    width: scale(100),
     alignItems: 'flex-end',
   },
   qtyInput: {
-    marginVertical: 0,
     width: '100%',
     textAlign: 'center',
   },
   itemActions: {
     borderTopWidth: 1,
     marginTop: verticalScale(8),
-    paddingTop: verticalScale(6),
+    paddingTop: verticalScale(8),
   },
   substituteBtn: {
-    paddingVertical: 2,
+    alignSelf: 'flex-start',
   },
   summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: verticalScale(4),
+    paddingVertical: 3,
   },
-  marginRow: {
-    borderTopWidth: 1,
-    marginTop: verticalScale(6),
-    paddingTop: verticalScale(8),
+  summaryDivider: {
+    height: 1,
+    marginVertical: verticalScale(8),
+  },
+  rewardRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 });
 

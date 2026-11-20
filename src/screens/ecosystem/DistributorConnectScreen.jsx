@@ -1,22 +1,23 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import {
   AppScreenContainer,
   AppText,
   AppHeader,
-  GlassCard,
   AppBadge,
   AppButton,
-  AppModal,
-  AppInput,
-  MetricIconDisc,
   AppToast,
 } from '../../components/core/index.js';
 import { useTheme } from '../../theme/index.js';
 import { scale, verticalScale } from '../../theme/responsive.js';
 import { PermissionGuard } from '../../components/common/PermissionGuard.jsx';
 import { PERMISSIONS, hasPermission } from '../../store/useStaffStore.js';
+import {
+  PurchaseOrderCard,
+  ExpiryReturnCard,
+  CreatePoModal,
+  LogExpiryModal,
+} from '../../components/ecosystem/index.js';
 
 const INITIAL_PURCHASE_ORDERS = [
   {
@@ -70,25 +71,16 @@ const INITIAL_EXPIRY_BATCHES = [
  *
  * @param {Object} props
  * @param {Object} props.navigation
- * @param {Object} props.route
  */
-export const DistributorConnectScreen = ({ navigation, route }) => {
-  const { colors, spacing, isDark } = useTheme();
+export const DistributorConnectScreen = ({ navigation }) => {
+  const { colors } = useTheme();
   const [activeTab, setActiveTab] = useState('PO'); // 'PO' | 'EXPIRY'
   const [orders, setOrders] = useState(INITIAL_PURCHASE_ORDERS);
   const [expiries, setExpiries] = useState(INITIAL_EXPIRY_BATCHES);
 
-  // New PO Modal
+  // Modals
   const [createPoVisible, setCreatePoVisible] = useState(false);
-  const [distributorName, setDistributorName] = useState('Muller & Phipps Pakistan');
-  const [orderNotes, setOrderNotes] = useState('');
-  const [orderAmount, setOrderAmount] = useState('14500');
-
-  // New Expiry Modal
   const [createExpiryVisible, setCreateExpiryVisible] = useState(false);
-  const [expiryBrand, setExpiryBrand] = useState('Augmentin 625mg');
-  const [expiryBatch, setExpiryBatch] = useState('AG-99120');
-  const [expiryUnits, setExpiryUnits] = useState('15');
 
   const handleApprovePo = (poId) => {
     if (!hasPermission(PERMISSIONS.PO_APPROVER)) {
@@ -110,7 +102,7 @@ export const DistributorConnectScreen = ({ navigation, route }) => {
     });
   };
 
-  const handleCreatePo = () => {
+  const handleCreatePo = ({ distributor, totalAmount }) => {
     if (!hasPermission(PERMISSIONS.PO_INITIATOR)) {
       AppToast.show({
         title: 'Permission Denied',
@@ -123,9 +115,9 @@ export const DistributorConnectScreen = ({ navigation, route }) => {
     const newPO = {
       id: 'po_' + Date.now(),
       poNumber: 'PO-2026-00' + (orders.length + 42),
-      distributor: distributorName,
+      distributor,
       itemsCount: 4,
-      totalAmount: Number(orderAmount) || 12000,
+      totalAmount,
       status: 'Pending Approval',
       createdAt: new Date().toLocaleDateString('en-GB'),
       canApprove: true,
@@ -160,7 +152,7 @@ export const DistributorConnectScreen = ({ navigation, route }) => {
     });
   };
 
-  const handleCreateExpiry = () => {
+  const handleCreateExpiry = ({ brandName, batchNo, units }) => {
     if (!hasPermission(PERMISSIONS.EXPIRY_INITIATOR)) {
       AppToast.show({
         title: 'Permission Denied',
@@ -172,11 +164,11 @@ export const DistributorConnectScreen = ({ navigation, route }) => {
 
     const newExp = {
       id: 'exp_' + Date.now(),
-      brandName: expiryBrand,
-      batchNo: expiryBatch,
+      brandName,
+      batchNo,
       expiryDate: 'Dec 2026',
-      units: Number(expiryUnits) || 10,
-      claimValue: (Number(expiryUnits) || 10) * 180,
+      units,
+      claimValue: units * 180,
       status: 'Ready for Return Authorization',
     };
 
@@ -237,48 +229,7 @@ export const DistributorConnectScreen = ({ navigation, route }) => {
           </View>
 
           {orders.map((po) => (
-            <GlassCard key={po.id} style={styles.card}>
-              <View style={styles.cardTopRow}>
-                <View style={{ flex: 1 }}>
-                  <AppText variant="titleMedium" colorType="primary">{po.poNumber}</AppText>
-                  <AppText variant="caption" colorType="muted">
-                    {po.distributor} • {po.itemsCount} Items
-                  </AppText>
-                  <AppText variant="bodySmallMedium" colorType="brand" style={{ marginTop: 2 }}>
-                    PKR {po.totalAmount.toLocaleString()}
-                  </AppText>
-                </View>
-
-                <AppBadge
-                  label={po.status}
-                  variant={
-                    po.status === 'Submitted to Distributor' || po.status === 'Dispatched'
-                      ? 'success'
-                      : 'accent'
-                  }
-                />
-              </View>
-
-              {po.status === 'Pending Approval' && (
-                <View style={[styles.cardActionRow, { borderTopColor: colors.border?.subtle }]}>
-                  <PermissionGuard
-                    permission={PERMISSIONS.PO_APPROVER}
-                    fallback={
-                      <AppText variant="caption" colorType="muted">
-                        Awaiting PO Approver authorization.
-                      </AppText>
-                    }
-                  >
-                    <AppButton
-                      variant="primary"
-                      size="xs"
-                      title="Approve & Transmit PO to Distributor"
-                      onPress={() => handleApprovePo(po.id)}
-                    />
-                  </PermissionGuard>
-                </View>
-              )}
-            </GlassCard>
+            <PurchaseOrderCard key={po.id} po={po} onApprove={handleApprovePo} />
           ))}
         </View>
       )}
@@ -306,44 +257,7 @@ export const DistributorConnectScreen = ({ navigation, route }) => {
           </View>
 
           {expiries.map((exp) => (
-            <GlassCard key={exp.id} style={styles.card}>
-              <View style={styles.cardTopRow}>
-                <View style={{ flex: 1 }}>
-                  <AppText variant="titleMedium" colorType="primary">{exp.brandName}</AppText>
-                  <AppText variant="caption" colorType="muted">
-                    Batch: {exp.batchNo} • Cutoff: {exp.expiryDate} • Qty: {exp.units} units
-                  </AppText>
-                  <AppText variant="bodySmallMedium" colorType="brand" style={{ marginTop: 2 }}>
-                    Claim Value: PKR {exp.claimValue.toLocaleString()}
-                  </AppText>
-                </View>
-
-                <AppBadge
-                  label={exp.status}
-                  variant={exp.status.includes('Credit') ? 'success' : 'accent'}
-                />
-              </View>
-
-              {exp.status === 'Ready for Return Authorization' && (
-                <View style={[styles.cardActionRow, { borderTopColor: colors.border?.subtle }]}>
-                  <PermissionGuard
-                    permission={PERMISSIONS.EXPIRY_APPROVER}
-                    fallback={
-                      <AppText variant="caption" colorType="muted">
-                        Awaiting Expiry Approver sign-off.
-                      </AppText>
-                    }
-                  >
-                    <AppButton
-                      variant="accent"
-                      size="xs"
-                      title="Authorize Credit Note Claim"
-                      onPress={() => handleAuthorizeExpiry(exp.id)}
-                    />
-                  </PermissionGuard>
-                </View>
-              )}
-            </GlassCard>
+            <ExpiryReturnCard key={exp.id} expiry={exp} onAuthorize={handleAuthorizeExpiry} />
           ))}
         </View>
       )}
@@ -351,71 +265,18 @@ export const DistributorConnectScreen = ({ navigation, route }) => {
       <View style={{ height: verticalScale(20) }} />
 
       {/* Draft PO Modal */}
-      <AppModal
+      <CreatePoModal
         visible={createPoVisible}
-        type="bottomSheet"
-        title="Draft New Purchase Order"
         onClose={() => setCreatePoVisible(false)}
-      >
-        <View style={styles.modalBody}>
-          <AppInput
-            label="Distributor Name"
-            value={distributorName}
-            onChangeText={setDistributorName}
-          />
-          <AppInput
-            label="Order Estimated Amount (PKR)"
-            value={orderAmount}
-            onChangeText={setOrderAmount}
-            keyboardType="number-pad"
-          />
-          <AppInput
-            label="Booking Notes / Delivery Window"
-            placeholder="e.g. Urgent stock delivery before Friday"
-            value={orderNotes}
-            onChangeText={setOrderNotes}
-          />
-          <View style={{ height: spacing.md }} />
-          <AppButton
-            variant="primary"
-            title="Submit Draft for Approval"
-            onPress={handleCreatePo}
-          />
-        </View>
-      </AppModal>
+        onCreate={handleCreatePo}
+      />
 
       {/* Log Expiry Modal */}
-      <AppModal
+      <LogExpiryModal
         visible={createExpiryVisible}
-        type="bottomSheet"
-        title="Log Near-Expiry Medicines"
         onClose={() => setCreateExpiryVisible(false)}
-      >
-        <View style={styles.modalBody}>
-          <AppInput
-            label="Brand Name"
-            value={expiryBrand}
-            onChangeText={setExpiryBrand}
-          />
-          <AppInput
-            label="Batch Number"
-            value={expiryBatch}
-            onChangeText={setExpiryBatch}
-          />
-          <AppInput
-            label="Units to Return"
-            value={expiryUnits}
-            onChangeText={setExpiryUnits}
-            keyboardType="number-pad"
-          />
-          <View style={{ height: spacing.md }} />
-          <AppButton
-            variant="primary"
-            title="Log Expiry Batch"
-            onPress={handleCreateExpiry}
-          />
-        </View>
-      </AppModal>
+        onLog={handleCreateExpiry}
+      />
     </AppScreenContainer>
   );
 };
@@ -439,25 +300,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginVertical: verticalScale(8),
-  },
-  card: {
-    width: '100%',
-    marginVertical: verticalScale(5),
-    flexDirection: 'column',
-    alignItems: 'stretch',
-  },
-  cardTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  cardActionRow: {
-    borderTopWidth: 1,
-    marginTop: verticalScale(8),
-    paddingTop: verticalScale(8),
-  },
-  modalBody: {
-    paddingBottom: verticalScale(16),
   },
 });
 

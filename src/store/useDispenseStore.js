@@ -3,6 +3,8 @@ import { create } from 'zustand';
 const initialState = {
   activePrescription: null,
   scannedItems: [],
+  matchedBrands: [],
+  alternateBrands: [],
   substituteOptions: [],
   nearbyPharmaciesStock: [],
   isScanning: false,
@@ -11,13 +13,18 @@ const initialState = {
 
 /**
  * useDispenseStore - QR Prescription Scanning & Dispense Confirmation Store
- * Grounded in ONERETAIL_PRD.md (Core Features – Home Page: Prescription Scanning & Dispense Confirmation)
+ * Grounded in ONERETAIL_PRD.md:
+ * - Scanned QR items (Brand or Generic-ID mapped)
+ * - Alternate brands of the same Generic with TP/MRP
+ * - Nearby pharmacies stock (Pharmacy Name - Distance km)
+ * - Dispense quantities & brand substitution recording
  */
 export const useDispenseStore = create((set, get) => ({
   ...initialState,
 
   /**
    * Set scanned prescription and populate items
+   * Supports both Brand-level and Generic-ID QR scan payloads
    */
   setScannedPrescription: (prescription) => {
     const items = Array.isArray(prescription?.items)
@@ -33,14 +40,17 @@ export const useDispenseStore = create((set, get) => ({
           tp: Number(item.tp) || 0,
           mrp: Number(item.mrp) || 0,
           activeScheme: item.activeScheme || null,
-          substitutedBrand: null,
-          substituteReason: null,
+          substitutedBrand: item.substitutedBrand || null,
+          substituteReason: item.substituteReason || null,
         }))
       : [];
 
     set({
       activePrescription: prescription,
       scannedItems: items,
+      matchedBrands: prescription?.matchedBrands || [],
+      alternateBrands: prescription?.alternateBrands || [],
+      nearbyPharmaciesStock: prescription?.nearbyPharmacies || [],
     });
   },
 
@@ -89,6 +99,14 @@ export const useDispenseStore = create((set, get) => ({
           : item
       ),
     }));
+  },
+
+  setMatchedBrands: (brands) => {
+    set({ matchedBrands: Array.isArray(brands) ? brands : [] });
+  },
+
+  setAlternateBrands: (brands) => {
+    set({ alternateBrands: Array.isArray(brands) ? brands : [] });
   },
 
   setSubstituteOptions: (options) => {

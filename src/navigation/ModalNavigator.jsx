@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import {
   AppModal,
   AppText,
@@ -11,10 +11,189 @@ import {
 } from '../components/core/index.js';
 import { useDispenseStore } from '../store/useDispenseStore.js';
 import { useStaffStore, PERMISSIONS } from '../store/useStaffStore.js';
+import { usePharmacyStore } from '../store/usePharmacyStore.js';
 import { useTheme } from '../theme/index.js';
+import { scale, verticalScale } from '../theme/responsive.js';
+import { SubstituteSearchModal } from '../screens/prescription/SubstituteSearchModal.jsx';
 
 /**
- * 1. QRScannerModal
+ * 1. SubstituteSearchModalScreen
+ * Transparent modal screen wrapper for DRAP Generic/Segment substitute search
+ */
+export const SubstituteSearchModalScreen = ({ navigation, route }) => {
+  const initialGeneric = route?.params?.initialGeneric || '';
+  const onSelectSubstitute = route?.params?.onSelectSubstitute;
+
+  return (
+    <SubstituteSearchModal
+      visible={true}
+      initialGeneric={initialGeneric}
+      onClose={() => navigation.goBack()}
+      onSelectSubstitute={(sub, reason) => {
+        if (typeof onSelectSubstitute === 'function') {
+          onSelectSubstitute(sub, reason);
+        }
+        navigation.goBack();
+      }}
+    />
+  );
+};
+
+/**
+ * 2. CashoutWithdrawModalScreen
+ * Transparent modal screen for wallet withdrawal via EasyPaisa, JazzCash, or Bank Transfer
+ */
+export const CashoutWithdrawModalScreen = ({ navigation }) => {
+  const { colors, spacing, isDark } = useTheme();
+  const walletBalance = usePharmacyStore((s) => s.walletBalance) || 48500;
+  const updatePii = usePharmacyStore((s) => s.updatePii);
+  const addPaymentHistoryRecord = usePharmacyStore((s) => s.addPaymentHistoryRecord);
+
+  const [channel, setChannel] = useState('EASYPAISA'); // 'EASYPAISA' | 'JAZZCASH' | 'BANK'
+  const [amount, setAmount] = useState('10000');
+  const [accountNumber, setAccountNumber] = useState('');
+  const [accountTitle, setAccountTitle] = useState('');
+  const [bankName, setBankName] = useState('Meezan Bank');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = () => {
+    const numAmt = Number(amount);
+    if (!numAmt || numAmt <= 0 || numAmt > walletBalance) {
+      AppToast.show({
+        title: 'Invalid Amount',
+        message: `Please enter an amount up to available balance PKR ${walletBalance.toLocaleString()}.`,
+        type: 'warning',
+      });
+      return;
+    }
+
+    if (!accountNumber.trim() || !accountTitle.trim()) {
+      AppToast.show({
+        title: 'Required Fields',
+        message: 'Please provide account title and account number.',
+        type: 'warning',
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+    setTimeout(() => {
+      setIsSubmitting(false);
+      updatePii({
+        walletBalance: walletBalance - numAmt,
+        pendingCashout: numAmt,
+      });
+      if (typeof addPaymentHistoryRecord === 'function') {
+        addPaymentHistoryRecord({
+          id: 'pay_' + Date.now(),
+          amount: numAmt,
+          channel,
+          accountNumber,
+          date: new Date().toISOString(),
+          status: 'PENDING',
+        });
+      }
+      AppToast.show({
+        title: 'Withdrawal Queued',
+        message: `PKR ${numAmt.toLocaleString()} queued via ${channel}. Tax documentation generated.`,
+        type: 'success',
+      });
+      navigation.goBack();
+    }, 600);
+  };
+
+  const CHANNELS = [
+    { id: 'EASYPAISA', label: 'EasyPaisa' },
+    { id: 'JAZZCASH', label: 'JazzCash' },
+    { id: 'BANK', label: 'Bank Transfer' },
+  ];
+
+  return (
+    <AppModal
+      visible={true}
+      type="bottomSheet"
+      title="Request Cashout"
+      scrollable={true}
+      onClose={() => navigation.goBack()}
+    >
+      <View style={styles.modalContent}>
+        <AppText variant="caption" colorType="muted" style={{ marginBottom: 12 }}>
+          Available Balance: PKR {walletBalance.toLocaleString()} (Tax WHT 1% applicable)
+        </AppText>
+
+        <View style={styles.channelRow}>
+          {CHANNELS.map((ch) => (
+            <TouchableOpacity
+              key={ch.id}
+              onPress={() => setChannel(ch.id)}
+              style={[
+                styles.channelChip,
+                {
+                  borderColor: channel === ch.id ? colors.brand?.primary : colors.border?.subtle,
+                  backgroundColor:
+                    channel === ch.id
+                      ? isDark
+                        ? 'rgba(0, 155, 169, 0.2)'
+                        : 'rgba(0, 155, 169, 0.1)'
+                      : 'transparent',
+                },
+              ]}
+            >
+              <AppText
+                variant="captionMedium"
+                colorType={channel === ch.id ? 'brand' : 'muted'}
+              >
+                {ch.label}
+              </AppText>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <AppInput
+          label="Withdrawal Amount (PKR)"
+          value={amount}
+          onChangeText={setAmount}
+          keyboardType="number-pad"
+        />
+
+        {channel === 'BANK' && (
+          <AppInput
+            label="Bank Name"
+            value={bankName}
+            onChangeText={setBankName}
+            placeholder="e.g. Meezan Bank, HBL, Bank Alfalah"
+          />
+        )}
+
+        <AppInput
+          label={channel === 'BANK' ? 'Account Number / IBAN' : 'Mobile Account Number'}
+          value={accountNumber}
+          onChangeText={setAccountNumber}
+          keyboardType="number-pad"
+          placeholder={channel === 'BANK' ? 'PK00MEZN0000000000000000' : '03001234567'}
+        />
+
+        <AppInput
+          label="Account Title / Beneficiary Name"
+          value={accountTitle}
+          onChangeText={setAccountTitle}
+          placeholder="e.g. Ali Khan / City Meds Pharmacy"
+        />
+
+        <View style={{ height: verticalScale(12) }} />
+        <AppButton
+          variant="primary"
+          title={isSubmitting ? 'Processing...' : 'Confirm Cashout'}
+          loading={isSubmitting}
+          onPress={handleSubmit}
+        />
+      </View>
+    </AppModal>
+  );
+};
+
+/**
+ * 3. QRScannerModal
  * Prescription QR scanner triggered via center FAB
  */
 export const QRScannerModal = ({ navigation }) => {
@@ -22,7 +201,6 @@ export const QRScannerModal = ({ navigation }) => {
   const { spacing } = useTheme();
 
   const handleSimulateScan = () => {
-    // Mock prescription scan payload
     setScannedPrescription({
       id: 'rx_1001',
       prescriptionNumber: 'RX-99214',
@@ -96,7 +274,7 @@ export const QRScannerModal = ({ navigation }) => {
 };
 
 /**
- * 2. DispenseConfirmModal
+ * 4. DispenseConfirmModal
  * Prompts user to verify/enter dispensed quantities and substitute brands if needed
  */
 export const DispenseConfirmModal = ({ navigation }) => {
@@ -173,7 +351,7 @@ export const DispenseConfirmModal = ({ navigation }) => {
 };
 
 /**
- * 3. SubstitutePickerModal
+ * 5. SubstitutePickerModal
  * View alternate brands of the same generic
  */
 export const SubstitutePickerModal = ({ navigation, route }) => {
@@ -229,7 +407,7 @@ export const SubstitutePickerModal = ({ navigation, route }) => {
 };
 
 /**
- * 4. StaffCreateModal
+ * 6. StaffCreateModal
  * Staff Profile Creator with RBAC Permission Checkboxes
  */
 export const StaffCreateModal = ({ navigation }) => {
@@ -337,7 +515,50 @@ export const StaffCreateModal = ({ navigation }) => {
   );
 };
 
+const styles = StyleSheet.create({
+  modalContent: {
+    paddingBottom: verticalScale(16),
+  },
+  channelRow: {
+    flexDirection: 'row',
+    marginBottom: verticalScale(12),
+    gap: scale(8),
+  },
+  channelChip: {
+    flex: 1,
+    borderWidth: 1,
+    paddingVertical: verticalScale(8),
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: scale(8),
+  },
+  dispenseItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: verticalScale(10),
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  qtyContainer: {
+    marginHorizontal: scale(8),
+  },
+  subItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: verticalScale(10),
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  permissionRow: {
+    marginVertical: verticalScale(4),
+  },
+});
+
 export default {
+  SubstituteSearchModalScreen,
+  CashoutWithdrawModalScreen,
   QRScannerModal,
   DispenseConfirmModal,
   SubstitutePickerModal,

@@ -17,11 +17,13 @@ import { DispenseConfirmationScreen } from '../screens/prescription/DispenseConf
 import { TradeSchemesScreen } from '../screens/ecosystem/TradeSchemesScreen.jsx';
 import { DistributorConnectScreen } from '../screens/ecosystem/DistributorConnectScreen.jsx';
 import { EngageScreen } from '../screens/ecosystem/EngageScreen.jsx';
-import { ImpactWalletScreen } from '../screens/wallet/ImpactWalletScreen.jsx';
+import { ImpactWalletScreen, EarningsScreen, PointsEarnedScreen } from '../screens/wallet/index.js';
 import { SettingsScreen } from '../screens/settings/SettingsScreen.jsx';
 
 // Modals
 import {
+  SubstituteSearchModalScreen,
+  CashoutWithdrawModalScreen,
   QRScannerModal,
   DispenseConfirmModal,
   SubstitutePickerModal,
@@ -138,18 +140,36 @@ export const RootNavigator = () => {
             options={{ animation: 'slide_from_right' }}
           />
           <Stack.Screen
+            name="Earnings"
+            component={EarningsScreen}
+            options={{ animation: 'slide_from_right' }}
+          />
+          <Stack.Screen
+            name="PointsEarned"
+            component={PointsEarnedScreen}
+            options={{ animation: 'slide_from_right' }}
+          />
+          <Stack.Screen
             name="Settings"
             component={SettingsScreen}
             options={{ animation: 'slide_from_right' }}
           />
 
-          {/* Modal group for popups and scanner */}
+          {/* Transparent Modal group for bottom sheets, popups and scanner */}
           <Stack.Group
             screenOptions={{
               presentation: 'transparentModal',
               animation: 'fade',
             }}
           >
+            <Stack.Screen
+              name="SubstituteSearchModal"
+              component={SubstituteSearchModalScreen}
+            />
+            <Stack.Screen
+              name="CashoutWithdrawModal"
+              component={CashoutWithdrawModalScreen}
+            />
             <Stack.Screen name="QRScannerModal" component={QRScannerModal} />
             <Stack.Screen name="DispenseConfirmModal" component={DispenseConfirmModal} />
             <Stack.Screen name="SubstitutePickerModal" component={SubstitutePickerModal} />

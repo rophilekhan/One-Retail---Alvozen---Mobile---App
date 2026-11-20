@@ -1,366 +1,290 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
+import React, { useState, useMemo, useCallback } from 'react';
+import {
+  View,
+  FlatList,
+  TouchableOpacity,
+  TextInput,
+  StyleSheet,
+  StatusBar,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/index.js';
-import { scale, verticalScale } from '../../theme/responsive.js';
+import { scale, verticalScale, scaleFont } from '../../theme/responsive.js';
+import { fontFamilies } from '../../theme/typography.js';
+import { radii } from '../../theme/radii.js';
+import { spacing } from '../../theme/spacing.js';
 import {
   AppScreenContainer,
+  AppBackButton,
   AppText,
-  AppHeader,
-  GlassCard,
-  AppBadge,
-  AppSwitch,
-  AppButton,
-  AppModal,
-  AppInput,
   AppToast,
-  MetricIconDisc,
 } from '../../components/core/index.js';
-import { useStaffStore, PERMISSIONS } from '../../store/useStaffStore.js';
-
-const PERMISSION_LABELS = {
-  [PERMISSIONS.SCAN_QR_DEVICE]: 'Scan QR (Device)',
-  [PERMISSIONS.SCAN_QR_PLUGIN]: 'Scan QR (Plug-in)',
-  [PERMISSIONS.PO_INITIATOR]: 'PO Initiator',
-  [PERMISSIONS.PO_APPROVER]: 'PO Approver',
-  [PERMISSIONS.EXPIRY_INITIATOR]: 'Expiry Initiator',
-  [PERMISSIONS.EXPIRY_APPROVER]: 'Expiry Approver',
-  [PERMISSIONS.UPLOAD_CLOSING_DATA]: 'Upload Closing',
-};
+import {
+  StaffMemberCard,
+  ResetStaffPasswordModal,
+} from '../../components/staff/index.js';
+import { PlusCustomIcon, SearchIconSvg } from '../../assets/vectors/index.js';
+import { useStaffStore } from '../../store/useStaffStore.js';
 
 /**
- * StaffListScreen - Staff Profiles & Access Management
- * Mandated by ONERETAIL_PRD.md:
- * - List staff profiles
- * - Admin can activate/deactivate any profile
- * - Admin can change password for any profile
- * - Navigate to StaffForm for creation / editing
+ * StaffListScreen
+ * Exact OneRx PAProfileListScreen port for OneRetail Staff Management
+ * Matching OneRx visual identity with search pill, circular CTA, and glass cards.
  *
  * @param {Object} props
  * @param {Object} props.navigation
  */
 export const StaffListScreen = ({ navigation }) => {
-  const { colors, spacing, isDark } = useTheme();
+  const { colors, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
+
   const staffList = useStaffStore((s) => s.staffList);
   const toggleStaffStatus = useStaffStore((s) => s.toggleStaffStatus);
   const updateStaff = useStaffStore((s) => s.updateStaff);
-  const addStaff = useStaffStore((s) => s.addStaff);
 
-  // Password reset modal state
-  const [resetModalVisible, setResetModalVisible] = useState(false);
-  const [selectedStaff, setSelectedStaff] = useState(null);
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
 
-  // Default demo staff if list is empty
-  React.useEffect(() => {
-    if (staffList.length === 0) {
-      addStaff({
-        id: 'staff_1',
-        username: 'staff_ali',
-        name: 'Ali Raza',
-        role: 'STAFF',
-        isActive: true,
-        allowedPermissions: [
-          PERMISSIONS.SCAN_QR_DEVICE,
-          PERMISSIONS.PO_INITIATOR,
-          PERMISSIONS.EXPIRY_INITIATOR,
-        ],
-        createdAt: '2026-01-15',
-      });
-      addStaff({
-        id: 'staff_2',
-        username: 'staff_fatima',
-        name: 'Fatima Noor',
-        role: 'STAFF',
-        isActive: false,
-        allowedPermissions: [
-          PERMISSIONS.SCAN_QR_DEVICE,
-          PERMISSIONS.SCAN_QR_PLUGIN,
-          PERMISSIONS.UPLOAD_CLOSING_DATA,
-        ],
-        createdAt: '2026-02-01',
-      });
-    }
-  }, [staffList.length, addStaff]);
+  // Password Modal State
+  const [isPasswordModalVisible, setPasswordModalVisible] = useState(false);
+  const [selectedStaffForPassword, setSelectedStaffForPassword] = useState(null);
 
-  const handleToggleStatus = (staffId, currentStatus, username) => {
-    const nextStatus = !currentStatus;
-    toggleStaffStatus(staffId, nextStatus);
-    AppToast.show({
-      title: nextStatus ? 'Staff Activated' : 'Staff Deactivated',
-      message: `@${username} account is now ${nextStatus ? 'active' : 'disabled'}.`,
-      type: nextStatus ? 'success' : 'warning',
+  // Filtered staff list
+  const filteredList = useMemo(() => {
+    if (!searchQuery.trim()) return staffList;
+    const q = searchQuery.toLowerCase().trim();
+    return staffList.filter((staff) => {
+      const name = staff.name ? staff.name.toLowerCase() : '';
+      const username = staff.username ? staff.username.toLowerCase() : '';
+      return name.includes(q) || username.includes(q);
     });
-  };
+  }, [staffList, searchQuery]);
 
-  const openResetPasswordModal = (staff) => {
-    setSelectedStaff(staff);
-    setNewPassword('');
-    setConfirmPassword('');
-    setResetModalVisible(true);
-  };
+  // Handlers
+  const handleBack = useCallback(() => {
+    navigation.goBack();
+  }, [navigation]);
 
-  const handleSavePassword = () => {
-    if (!newPassword || newPassword.length < 6) {
+  const handleSelectStaff = useCallback(
+    (staff) => {
+      navigation.navigate('StaffForm', { staff });
+    },
+    [navigation],
+  );
+
+  const handleCreateStaff = useCallback(() => {
+    navigation.navigate('StaffForm');
+  }, [navigation]);
+
+  const handleChangePassword = useCallback((staff) => {
+    setSelectedStaffForPassword(staff);
+    setPasswordModalVisible(true);
+  }, []);
+
+  const handleSavePassword = useCallback(
+    (staffId, newPassword) => {
+      updateStaff(staffId, { password: newPassword });
+    },
+    [updateStaff],
+  );
+
+  const handleToggleStatus = useCallback(
+    (staffId, newStatus) => {
+      toggleStaffStatus(staffId, newStatus);
       AppToast.show({
-        title: 'Invalid Password',
-        message: 'Password must be at least 6 characters long.',
-        type: 'warning',
+        title: 'Status Updated',
+        message: `Staff member account has been ${newStatus ? 'activated' : 'deactivated'}.`,
+        type: newStatus ? 'success' : 'info',
       });
-      return;
-    }
+    },
+    [toggleStaffStatus],
+  );
 
-    if (newPassword !== confirmPassword) {
-      AppToast.show({
-        title: 'Mismatch Error',
-        message: 'New password and confirmation do not match.',
-        type: 'error',
-      });
-      return;
-    }
-
-    if (selectedStaff) {
-      updateStaff(selectedStaff.id, { passwordUpdatedAt: new Date().toISOString() });
-      AppToast.show({
-        title: 'Password Updated',
-        message: `Password reset successfully for @${selectedStaff.username}.`,
-        type: 'success',
-      });
-    }
-
-    setResetModalVisible(false);
-  };
+  // Search Bar & Plus Button Styling
+  const searchBg = isDark ? 'rgba(255, 255, 255, 0.04)' : '#FFFFFF';
+  const searchBorder = isDark ? 'rgba(255, 255, 255, 0.08)' : '#E5E7EB';
+  const plusBtnBg = isDark ? '#009BA9' : '#0E435C';
 
   return (
-    <AppScreenContainer scrollable={true} withAmbientGlow={true}>
-      <AppHeader
-        title="Staff Management"
-        onBack={() => navigation.goBack()}
-        rightElement={
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => navigation.navigate('StaffForm')}
-            style={styles.addBtn}
-            accessibilityRole="button"
-            accessibilityLabel="Add Staff"
-          >
-            <AppBadge label="+ Add" variant="brand" />
-          </TouchableOpacity>
+    <AppScreenContainer
+      withAmbientGlow={true}
+      withHorizontalPadding={false}
+      scrollable={false}
+      style={styles.screenRoot}
+    >
+      <StatusBar
+        barStyle={isDark ? 'light-content' : 'dark-content'}
+        backgroundColor="transparent"
+        translucent
+      />
+
+      {/* ── 1. Top Header: "<  Staff Management" ─────────────── */}
+      <View style={styles.headerRow}>
+        <AppBackButton onPress={handleBack} />
+
+        <AppText style={[styles.headerTitle, { color: colors.text?.primary || '#020202' }]}>
+          Staff Management
+        </AppText>
+      </View>
+
+      {/* ── 2. Search Bar + Plus Button Row ─────────────────── */}
+      <View style={styles.searchRow}>
+        {/* Pill Search Input */}
+        <View
+          style={[
+            styles.searchInputContainer,
+            {
+              backgroundColor: searchBg,
+              borderColor: searchBorder,
+            },
+            !isDark && styles.pillShadow,
+          ]}
+        >
+          <SearchIconSvg
+            size={scale(18)}
+            color={isDark ? colors.text?.secondary || '#ABABAB' : '#787878'}
+            style={styles.searchIcon}
+          />
+          <TextInput
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholder="Search Staff Profiles..."
+            placeholderTextColor={isDark ? colors.text?.secondary || '#ABABAB' : '#9CA3AF'}
+            style={[
+              styles.textInput,
+              { color: colors.text?.primary || '#020202' },
+            ]}
+          />
+        </View>
+
+        {/* Circular Plus Button */}
+        <TouchableOpacity
+          style={[styles.plusBtn, { backgroundColor: plusBtnBg }]}
+          activeOpacity={0.8}
+          onPress={handleCreateStaff}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel="Add New Staff Member"
+        >
+          <PlusCustomIcon size={scale(22)} color="#FFFFFF" />
+        </TouchableOpacity>
+      </View>
+
+      {/* ── 3. Staff Cards List ─────────────────────────────── */}
+      <FlatList
+        data={filteredList}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <StaffMemberCard
+            staff={item}
+            onPress={() => handleSelectStaff(item)}
+            onChangePassword={() => handleChangePassword(item)}
+            onToggleStatus={handleToggleStatus}
+          />
+        )}
+        contentContainerStyle={[
+          styles.listContent,
+          { paddingBottom: insets.bottom + verticalScale(36) },
+        ]}
+        showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <AppText
+              style={[
+                styles.emptyText,
+                { color: colors.text?.secondary || '#787878' },
+              ]}
+            >
+              No staff profiles found.
+            </AppText>
+          </View>
         }
       />
 
-      <View style={styles.content}>
-        <View style={styles.summaryBar}>
-          <View>
-            <AppText variant="titleMedium" colorType="primary">
-              Pharmacy Team ({staffList.length})
-            </AppText>
-            <AppText variant="caption" colorType="muted">
-              Configure staff logins and operational permissions
-            </AppText>
-          </View>
-        </View>
-
-        {staffList.map((staff) => (
-          <GlassCard key={staff.id} style={styles.staffCard}>
-            {/* Header: User, Role, Active Switch */}
-            <View style={styles.cardHeader}>
-              <MetricIconDisc
-                variant={staff.isActive ? 'teal' : 'neutral'}
-                size={40}
-                marginRight={10}
-              >
-                <Svg width={scale(20)} height={scale(20)} viewBox="0 0 24 24" fill="none">
-                  <Path
-                    d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"
-                    stroke={colors.text.inverse || '#FFFFFF'}
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <Path
-                    d="M12 11a4 4 0 100-8 4 4 0 000 8z"
-                    stroke={colors.text.inverse || '#FFFFFF'}
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </Svg>
-              </MetricIconDisc>
-
-              <View style={{ flex: 1 }}>
-                <AppText variant="titleMedium" colorType="primary">
-                  @{staff.username}
-                </AppText>
-                <AppText variant="caption" colorType="muted">
-                  {staff.name || 'Staff Member'} • Added {staff.createdAt || 'Recent'}
-                </AppText>
-              </View>
-
-              <View style={styles.statusSwitchWrap}>
-                <AppBadge
-                  label={staff.isActive ? 'Active' : 'Inactive'}
-                  variant={staff.isActive ? 'success' : 'muted'}
-                  style={{ marginRight: 8 }}
-                />
-                <AppSwitch
-                  value={staff.isActive}
-                  onValueChange={() =>
-                    handleToggleStatus(staff.id, staff.isActive, staff.username)
-                  }
-                />
-              </View>
-            </View>
-
-            {/* Allowed Permissions Chips */}
-            <View style={styles.permSection}>
-              <AppText variant="caption" colorType="muted" style={{ marginBottom: 6 }}>
-                Allowed Access Permissions ({staff.allowedPermissions?.length || 0}):
-              </AppText>
-              <View style={styles.chipRow}>
-                {staff.allowedPermissions?.map((permKey) => (
-                  <View key={permKey} style={styles.chipWrapper}>
-                    <AppBadge
-                      label={PERMISSION_LABELS[permKey] || permKey}
-                      variant="brand"
-                      size="sm"
-                    />
-                  </View>
-                ))}
-                {(!staff.allowedPermissions || staff.allowedPermissions.length === 0) && (
-                  <AppText variant="caption" colorType="muted">
-                    No permissions assigned.
-                  </AppText>
-                )}
-              </View>
-            </View>
-
-            {/* Action Buttons: Reset Password & Edit Permissions */}
-            <View
-              style={[
-                styles.actionsRow,
-                { borderTopColor: colors.border.subtle },
-              ]}
-            >
-              <AppButton
-                variant="outline"
-                size="xs"
-                title="Reset Password"
-                onPress={() => openResetPasswordModal(staff)}
-                style={{ flex: 1, marginRight: 8 }}
-              />
-              <AppButton
-                variant="secondary"
-                size="xs"
-                title="Edit Access"
-                onPress={() => navigation.navigate('StaffForm', { staff })}
-                style={{ flex: 1 }}
-              />
-            </View>
-          </GlassCard>
-        ))}
-
-        <View style={{ height: verticalScale(16) }} />
-
-        <AppButton
-          variant="primary"
-          title="+ Create New Staff Profile"
-          onPress={() => navigation.navigate('StaffForm')}
-        />
-
-        <View style={{ height: verticalScale(20) }} />
-      </View>
-
-      {/* Password Reset Modal */}
-      <AppModal
-        visible={resetModalVisible}
-        type="bottomSheet"
-        title={`Reset Password: @${selectedStaff?.username || ''}`}
-        onClose={() => setResetModalVisible(false)}
-      >
-        <View style={styles.modalBody}>
-          <AppText variant="caption" colorType="muted" style={{ marginBottom: 12 }}>
-            Set a temporary or new password for this staff profile. The user can sign in immediately.
-          </AppText>
-
-          <AppInput
-            label="New Password"
-            placeholder="At least 6 characters"
-            value={newPassword}
-            onChangeText={setNewPassword}
-            secureTextEntry={true}
-          />
-
-          <AppInput
-            label="Confirm New Password"
-            placeholder="Re-enter new password"
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            secureTextEntry={true}
-          />
-
-          <View style={{ height: spacing.md }} />
-
-          <AppButton
-            variant="primary"
-            title="Save New Password"
-            onPress={handleSavePassword}
-          />
-        </View>
-      </AppModal>
+      {/* ── 4. Change Password Modal ────────────────────────── */}
+      <ResetStaffPasswordModal
+        visible={isPasswordModalVisible}
+        onClose={() => setPasswordModalVisible(false)}
+        staffMember={selectedStaffForPassword}
+        onSave={handleSavePassword}
+      />
     </AppScreenContainer>
   );
 };
 
 const styles = StyleSheet.create({
-  content: {
-    paddingVertical: verticalScale(12),
+  screenRoot: {
+    flex: 1,
   },
-  addBtn: {
-    paddingHorizontal: scale(4),
-  },
-  summaryBar: {
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: verticalScale(12),
+    paddingHorizontal: spacing.screenHorizontal || scale(20),
+    paddingTop: verticalScale(6),
+    paddingBottom: verticalScale(14),
   },
-  staffCard: {
-    width: '100%',
-    marginVertical: verticalScale(6),
-    flexDirection: 'column',
-    alignItems: 'stretch',
+  headerTitle: {
+    fontFamily: fontFamilies.primaryBold,
+    fontSize: scaleFont(18),
+    fontWeight: '700',
+    marginLeft: scale(14),
   },
-  cardHeader: {
+  searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    width: '100%',
+    paddingHorizontal: spacing.screenHorizontal || scale(20),
+    marginBottom: verticalScale(14),
   },
-  statusSwitchWrap: {
+  searchInputContainer: {
+    flex: 1,
+    height: verticalScale(48),
+    borderRadius: radii.pill,
+    borderWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: scale(16),
+    marginRight: scale(10),
   },
-  permSection: {
-    marginTop: verticalScale(12),
+  searchIcon: {
+    marginRight: scale(10),
   },
-  chipRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  chipWrapper: {
-    marginRight: scale(6),
-    marginBottom: verticalScale(6),
-  },
-  actionsRow: {
-    flexDirection: 'row',
+  plusBtn: {
+    width: scale(48),
+    height: scale(48),
+    borderRadius: scale(24),
     alignItems: 'center',
-    borderTopWidth: 1,
-    paddingTop: verticalScale(10),
-    marginTop: verticalScale(8),
+    justifyContent: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: verticalScale(4) },
+    shadowOpacity: 0.15,
+    shadowRadius: scale(8),
+    elevation: 3,
   },
-  modalBody: {
-    paddingBottom: verticalScale(16),
+  textInput: {
+    flex: 1,
+    height: '100%',
+    fontFamily: fontFamilies.primary,
+    fontSize: scaleFont(14),
+    padding: 0,
+  },
+  pillShadow: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  listContent: {
+    paddingHorizontal: spacing.screenHorizontal || scale(20),
+    paddingTop: verticalScale(4),
+  },
+  emptyContainer: {
+    paddingVertical: verticalScale(40),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyText: {
+    fontFamily: fontFamilies.primary,
+    fontSize: scaleFont(15),
   },
 });
 

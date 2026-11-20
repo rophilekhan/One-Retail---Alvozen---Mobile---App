@@ -1,9 +1,11 @@
+import { Platform } from 'react-native';
 import { scaleFont } from './responsive.js';
 
 export const fontFamilies = {
   primaryLight: 'DMSans-Light',
   primary: 'DMSans-Regular',
   primaryMedium: 'DMSans-Medium',
+  primaryBold: 'DMSans-Medium', // Android safe mapping: DMSans-Medium with bold weight
   mono: 'DMMono-Regular',
   monoMedium: 'DMMono-Medium',
 };
@@ -18,7 +20,7 @@ export const fontWeights = {
 
 /**
  * Standard typography variants extracted from OneRx / OneRetail Figma designs
- * Using available font assets: DMSans-Light, DMSans-Regular, DMSans-Medium, DMMono-Regular, DMMono-Medium
+ * Using verified .ttf font files: DMSans-Light, DMSans-Regular, DMSans-Medium, DMMono-Regular, DMMono-Medium
  */
 export const typography = {
   // Hero / Splash display
@@ -114,3 +116,5 @@ export const typography = {
     lineHeight: scaleFont(14),
   },
 };
+
+export default typography;

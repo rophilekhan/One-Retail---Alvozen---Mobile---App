@@ -45,9 +45,9 @@ export const AppBackButton = ({
       >
         <Svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none">
           <Path
-            d="M15 19L8 12L15 5"
+            d="M14.5 5.5L8 12L14.5 18.5"
             stroke={iconColor}
-            strokeWidth="2.2"
+            strokeWidth="1.5"
             strokeLinecap="round"
             strokeLinejoin="round"
           />

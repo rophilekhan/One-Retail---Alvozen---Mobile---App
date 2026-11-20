@@ -119,11 +119,13 @@ export const GlassCard = memo(({
 
 const styles = StyleSheet.create({
   outer: {
+    width: '100%',
+    flexDirection: 'column',
     overflow: 'hidden',
   },
   content: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    width: '100%',
+    flexDirection: 'column',
     padding: spacing.cardPadding,
   },
 });
