@@ -84,6 +84,15 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
+
+        // Load Google Maps API key from gitignored local.properties or system env var
+        Properties localProperties = new Properties()
+        def localPropertiesFile = project.rootProject.file('local.properties')
+        if (localPropertiesFile.exists()) {
+            localProperties.load(localPropertiesFile.newDataInputStream())
+        }
+        def mapsApiKey = localProperties.getProperty('MAPS_API_KEY') ?: System.getenv('GOOGLE_MAPS_API_KEY') ?: ""
+        resValue "string", "google_maps_api_key", mapsApiKey
     }
     signingConfigs {
         debug {

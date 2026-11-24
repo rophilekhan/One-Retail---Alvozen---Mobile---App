@@ -1,7 +1,14 @@
 import { Platform, PermissionsAndroid } from 'react-native';
 import Geolocation from '@react-native-community/geolocation';
 
-export const GOOGLE_MAPS_API_KEY = 'AIzaSyCaahpz2w-XLAEYmfvRzlPn7ZsmlY89WmU';
+/**
+ * Google Maps API Key
+ * Loaded securely from environment variables.
+ * In development/production, set GOOGLE_MAPS_API_KEY in your local environment or .env.
+ * NEVER commit hardcoded secret keys to version control.
+ */
+export const GOOGLE_MAPS_API_KEY =
+  (typeof process !== 'undefined' && process.env?.GOOGLE_MAPS_API_KEY) || '';
 
 export const DARK_MAP_STYLE = [
   { elementType: 'geometry', stylers: [{ color: '#131B24' }] },
@@ -95,66 +102,68 @@ export const reverseGeocode = async (latitude, longitude) => {
     };
   }
 
-  // 1. Try Google Maps Geocoding API
-  try {
-    const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_MAPS_API_KEY}`;
-    const response = await fetch(url);
-    const data = await response.json();
+  // 1. Try Google Maps Geocoding API if key is available
+  if (GOOGLE_MAPS_API_KEY) {
+    try {
+      const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_MAPS_API_KEY}`;
+      const response = await fetch(url);
+      const data = await response.json();
 
-    if (data.status === 'OK' && Array.isArray(data.results) && data.results.length > 0) {
-      let cleanAddress = null;
-      let matchedResult = data.results[0];
+      if (data.status === 'OK' && Array.isArray(data.results) && data.results.length > 0) {
+        let cleanAddress = null;
+        let matchedResult = data.results[0];
 
-      // Find first result that does not start with a plus code
-      for (const res of data.results) {
-        const addr = (res.formatted_address || '').trim();
-        if (addr && !/^[A-Z0-9]{4,8}\+[A-Z0-9]{2,4}/i.test(addr)) {
-          cleanAddress = addr;
-          matchedResult = res;
-          break;
-        }
-      }
-
-      // If all started with plus codes, strip the plus code prefix from the first result
-      if (!cleanAddress) {
-        const first = (data.results[0].formatted_address || '').trim();
-        cleanAddress = first.replace(/^[A-Z0-9]{4,8}\+[A-Z0-9]{2,4},\s*/i, '').trim();
-        matchedResult = data.results[0];
-      }
-
-      // Parse address components
-      let area = '';
-      let city = '';
-      let postalCode = '';
-
-      if (Array.isArray(matchedResult?.address_components)) {
-        for (const comp of matchedResult.address_components) {
-          const types = comp.types || [];
-          if (types.includes('sublocality') || types.includes('sublocality_level_1') || types.includes('neighborhood')) {
-            area = comp.long_name || comp.short_name || area;
-          }
-          if (types.includes('locality') || types.includes('administrative_area_level_2')) {
-            city = comp.long_name || comp.short_name || city;
-          }
-          if (types.includes('postal_code')) {
-            postalCode = comp.long_name || comp.short_name || postalCode;
+        // Find first result that does not start with a plus code
+        for (const res of data.results) {
+          const addr = (res.formatted_address || '').trim();
+          if (addr && !/^[A-Z0-9]{4,8}\+[A-Z0-9]{2,4}/i.test(addr)) {
+            cleanAddress = addr;
+            matchedResult = res;
+            break;
           }
         }
-      }
 
-      if (cleanAddress) {
-        return {
-          formattedAddress: cleanAddress,
-          area,
-          city,
-          postalCode,
-          latitude: lat,
-          longitude: lng,
-        };
+        // If all started with plus codes, strip the plus code prefix from the first result
+        if (!cleanAddress) {
+          const first = (data.results[0].formatted_address || '').trim();
+          cleanAddress = first.replace(/^[A-Z0-9]{4,8}\+[A-Z0-9]{2,4},\s*/i, '').trim();
+          matchedResult = data.results[0];
+        }
+
+        // Parse address components
+        let area = '';
+        let city = '';
+        let postalCode = '';
+
+        if (Array.isArray(matchedResult?.address_components)) {
+          for (const comp of matchedResult.address_components) {
+            const types = comp.types || [];
+            if (types.includes('sublocality') || types.includes('sublocality_level_1') || types.includes('neighborhood')) {
+              area = comp.long_name || comp.short_name || area;
+            }
+            if (types.includes('locality') || types.includes('administrative_area_level_2')) {
+              city = comp.long_name || comp.short_name || city;
+            }
+            if (types.includes('postal_code')) {
+              postalCode = comp.long_name || comp.short_name || postalCode;
+            }
+          }
+        }
+
+        if (cleanAddress) {
+          return {
+            formattedAddress: cleanAddress,
+            area,
+            city,
+            postalCode,
+            latitude: lat,
+            longitude: lng,
+          };
+        }
       }
+    } catch (error) {
+      console.warn('[geocodingService] Google Geocoding API error:', error?.message);
     }
-  } catch (error) {
-    console.warn('[geocodingService] Google Geocoding API error:', error?.message);
   }
 
   // 2. Fallback to OpenStreetMap Nominatim
@@ -206,30 +215,32 @@ export const searchPlacesOrAddress = async (query) => {
 
   const cleanQuery = query.trim();
 
-  // 1. Try Google Maps Geocoding API with Pakistan component filter
-  try {
-    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(cleanQuery)}&components=country:PK&key=${GOOGLE_MAPS_API_KEY}`;
-    const response = await fetch(url);
-    const data = await response.json();
+  // 1. Try Google Maps Geocoding API with Pakistan component filter if key is available
+  if (GOOGLE_MAPS_API_KEY) {
+    try {
+      const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(cleanQuery)}&components=country:PK&key=${GOOGLE_MAPS_API_KEY}`;
+      const response = await fetch(url);
+      const data = await response.json();
 
-    if (data.status === 'OK' && Array.isArray(data.results) && data.results.length > 0) {
-      return data.results.slice(0, 5).map((item) => {
-        const fullAddr = (item.formatted_address || '').replace(/^[A-Z0-9]{4,8}\+[A-Z0-9]{2,4},\s*/i, '').trim();
-        const parts = fullAddr.split(',');
-        const title = parts[0]?.trim() || cleanQuery;
-        const subtitle = parts.slice(1).join(',').trim() || fullAddr;
+      if (data.status === 'OK' && Array.isArray(data.results) && data.results.length > 0) {
+        return data.results.slice(0, 5).map((item) => {
+          const fullAddr = (item.formatted_address || '').replace(/^[A-Z0-9]{4,8}\+[A-Z0-9]{2,4},\s*/i, '').trim();
+          const parts = fullAddr.split(',');
+          const title = parts[0]?.trim() || cleanQuery;
+          const subtitle = parts.slice(1).join(',').trim() || fullAddr;
 
-        return {
-          title,
-          subtitle,
-          formattedAddress: fullAddr,
-          latitude: item.geometry?.location?.lat || 0,
-          longitude: item.geometry?.location?.lng || 0,
-        };
-      });
+          return {
+            title,
+            subtitle,
+            formattedAddress: fullAddr,
+            latitude: item.geometry?.location?.lat || 0,
+            longitude: item.geometry?.location?.lng || 0,
+          };
+        });
+      }
+    } catch (error) {
+      console.warn('[geocodingService] Google Search Places error:', error?.message);
     }
-  } catch (error) {
-    console.warn('[geocodingService] Google Search Places error:', error?.message);
   }
 
   // 2. Fallback to OpenStreetMap Nominatim search
