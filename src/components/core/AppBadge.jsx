@@ -2,6 +2,7 @@ import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useTheme } from '../../theme/index.js';
 import { scale } from '../../theme/responsive.js';
+import { fontFamilies } from '../../theme/typography.js';
 import AppText from './AppText.jsx';
 
 /**
@@ -10,8 +11,9 @@ import AppText from './AppText.jsx';
  *
  * @param {Object} props
  * @param {string} props.label - Badge text content
- * @param {'brand' | 'accent' | 'warning' | 'error' | 'success' | 'neutral'} [props.variant='brand'] - Visual badge variant
+ * @param {'brand' | 'accent' | 'warning' | 'error' | 'success' | 'neutral' | 'muted'} [props.variant='brand'] - Visual badge variant
  * @param {'sm' | 'md'} [props.size='md'] - Sizing option
+ * @param {boolean} [props.isMono=false] - Whether to use DM Mono typography
  * @param {React.ReactNode} [props.icon] - Optional leading icon
  * @param {Object} [props.style] - Container style overrides
  * @param {Object} [props.textStyle] - Label text style overrides
@@ -20,6 +22,7 @@ export const AppBadge = ({
   label,
   variant = 'brand',
   size = 'md',
+  isMono = false,
   icon,
   style,
   textStyle,
@@ -31,38 +34,39 @@ export const AppBadge = ({
       case 'accent':
         return {
           bg: isDark ? 'rgba(251, 107, 3, 0.16)' : 'rgba(251, 107, 3, 0.12)',
-          text: colors.brand?.accent || '#fb6b03',
+          text: isDark ? '#FFA043' : '#EA580C',
           border: isDark ? 'rgba(251, 107, 3, 0.35)' : 'rgba(251, 107, 3, 0.25)',
         };
       case 'success':
         return {
-          bg: isDark ? 'rgba(40, 167, 69, 0.18)' : 'rgba(40, 167, 69, 0.12)',
-          text: colors.status?.success || '#28A745',
-          border: isDark ? 'rgba(40, 167, 69, 0.35)' : 'rgba(40, 167, 69, 0.25)',
+          bg: isDark ? 'rgba(40, 167, 69, 0.18)' : 'rgba(73, 200, 143, 0.14)',
+          text: isDark ? '#34D399' : '#059669',
+          border: isDark ? 'rgba(40, 167, 69, 0.35)' : 'rgba(73, 200, 143, 0.30)',
         };
       case 'error':
         return {
-          bg: isDark ? 'rgba(255, 75, 75, 0.18)' : 'rgba(255, 75, 75, 0.12)',
-          text: colors.status?.error || '#FF4B4B',
-          border: isDark ? 'rgba(255, 75, 75, 0.35)' : 'rgba(255, 75, 75, 0.25)',
+          bg: isDark ? 'rgba(239, 68, 68, 0.20)' : 'rgba(239, 68, 68, 0.12)',
+          text: isDark ? '#F87171' : '#DC2626',
+          border: isDark ? 'rgba(239, 68, 68, 0.35)' : 'rgba(239, 68, 68, 0.25)',
         };
       case 'warning':
         return {
-          bg: isDark ? 'rgba(255, 193, 7, 0.18)' : 'rgba(255, 193, 7, 0.12)',
-          text: colors.status?.warning || '#FFC107',
-          border: isDark ? 'rgba(255, 193, 7, 0.35)' : 'rgba(255, 193, 7, 0.25)',
+          bg: isDark ? 'rgba(245, 158, 11, 0.20)' : 'rgba(245, 158, 11, 0.12)',
+          text: isDark ? '#FBBF24' : '#D97706',
+          border: isDark ? 'rgba(245, 158, 11, 0.35)' : 'rgba(245, 158, 11, 0.25)',
         };
       case 'neutral':
+      case 'muted':
         return {
           bg: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)',
-          text: colors.text?.secondary || '#787878',
+          text: isDark ? '#D9D9D9' : '#52525B',
           border: isDark ? 'rgba(255, 255, 255, 0.14)' : 'rgba(0, 0, 0, 0.08)',
         };
       case 'brand':
       default:
         return {
           bg: isDark ? 'rgba(0, 155, 169, 0.16)' : 'rgba(0, 155, 169, 0.12)',
-          text: colors.brand?.primary || '#009BA9',
+          text: isDark ? '#38D6E5' : (colors.brand?.primaryDark || '#0F4761'),
           border: isDark ? 'rgba(0, 155, 169, 0.35)' : 'rgba(0, 155, 169, 0.25)',
         };
     }
@@ -90,7 +94,10 @@ export const AppBadge = ({
         variant="badge"
         style={[
           styles.text,
-          { color: currentColors.text },
+          {
+            color: currentColors.text,
+            fontFamily: isMono ? fontFamilies.monoMedium : fontFamilies.primaryMedium,
+          },
           isSmall && { fontSize: scale(9), lineHeight: scale(11) },
           textStyle,
         ]}
@@ -107,6 +114,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     alignSelf: 'flex-start',
     borderWidth: 1,
+    flexShrink: 0,
   },
   icon: {
     marginRight: 4,

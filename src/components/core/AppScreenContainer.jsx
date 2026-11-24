@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Defs, RadialGradient, Rect, Circle, Stop, Pattern } from 'react-native-svg';
 import { useTheme } from '../../theme/index.js';
+import { verticalScale } from '../../theme/responsive.js';
 
 /**
  * AppScreenContainer - OneRetail Standard Screen Wrapper
@@ -43,17 +44,25 @@ export const AppScreenContainer = ({
   const containerPadding = withHorizontalPadding ? spacing?.screenHorizontal || 20 : 0;
   const currentBgColor = colors?.background?.primary || (isDark ? '#020202' : '#ffffff');
   const topInset = insets?.top ?? 0;
-  const baseBottomInset = Math.max(insets?.bottom ?? 0, 16);
-  const bottomNavPadding = withBottomNavClearance ? spacing?.bottomNavClearance || 100 : 0;
+  const bottomInset = insets?.bottom ?? 0;
+
+  // Calibrated clearances according to OneRx floating bar geometry (height 64 at bottom 8 + insets.bottom):
+  // 1. Screens WITH FloatingBottomBar (main tabs): leaves exact verticalScale(12) clean gap above the floating bar
+  const bottomNavClearance = bottomInset + verticalScale(84);
+  // 2. Screens WITHOUT FloatingBottomBar (stack screens): reaches cleanly down to safe area
+  const standardBottomClearance = Math.max(bottomInset, verticalScale(16)) + verticalScale(12);
 
   const flattenedContent = StyleSheet.flatten(contentContainerStyle) || {};
   let resolvedPaddingBottom;
   if (flattenedContent.paddingBottom === 0) {
-    resolvedPaddingBottom = bottomNavPadding;
+    // Explicit opt-out: inner scroll container (e.g. FlatList) handles bottom clearance ONCE
+    resolvedPaddingBottom = 0;
+  } else if (withBottomNavClearance) {
+    resolvedPaddingBottom = bottomNavClearance;
   } else if (typeof flattenedContent.paddingBottom === 'number') {
-    resolvedPaddingBottom = flattenedContent.paddingBottom + baseBottomInset + bottomNavPadding;
+    resolvedPaddingBottom = Math.max(flattenedContent.paddingBottom, standardBottomClearance);
   } else {
-    resolvedPaddingBottom = baseBottomInset + bottomNavPadding;
+    resolvedPaddingBottom = standardBottomClearance;
   }
 
   const content = scrollable ? (

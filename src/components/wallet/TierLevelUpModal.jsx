@@ -22,65 +22,12 @@ import { scale, verticalScale, scaleFont } from '../../theme/responsive.js';
 import { fontFamilies } from '../../theme/typography.js';
 import { AppText } from '../core/index.js';
 import { TierGemIcon } from '../../assets/vectors/ImpactIcons.jsx';
-
-const TIER_LEVELS = {
-  general_trade: { level: 1, name: 'General Trade' },
-  emerging: { level: 1, name: 'General Trade' },
-  established: { level: 2, name: 'Established' },
-  key_account: { level: 3, name: 'Key Account' },
-  senior: { level: 3, name: 'Key Account' },
-  flagship: { level: 4, name: 'Flagship' },
-  distinguished: { level: 4, name: 'Flagship' },
-};
-
-const TIER_DISC_CONFIG = {
-  general_trade: {
-    lightBg: ['#FFFFFF', '#D5F5ED'],
-    darkBg: ['#52857C', '#2B574E', '#0A1714'],
-    stripe: '#00C48C',
-  },
-  emerging: {
-    lightBg: ['#FFFFFF', '#D5F5ED'],
-    darkBg: ['#52857C', '#2B574E', '#0A1714'],
-    stripe: '#00C48C',
-  },
-  established: {
-    lightBg: ['#FFFFFF', '#FDE7D8'],
-    darkBg: ['#9C6235', '#5C381B', '#170E06'],
-    stripe: '#FB6B03',
-  },
-  key_account: {
-    lightBg: ['#FFFFFF', '#D9EFFC'],
-    darkBg: ['#597E9C', '#2B4A66', '#09131C'],
-    stripe: '#0284C7',
-  },
-  senior: {
-    lightBg: ['#FFFFFF', '#D9EFFC'],
-    darkBg: ['#597E9C', '#2B4A66', '#09131C'],
-    stripe: '#0284C7',
-  },
-  flagship: {
-    lightBg: ['#FFFFFF', '#EBD3FB'],
-    darkBg: ['#9A88A5', '#473F4C', '#0D0B0D'],
-    stripe: '#A855F7',
-  },
-  distinguished: {
-    lightBg: ['#FFFFFF', '#EBD3FB'],
-    darkBg: ['#9A88A5', '#473F4C', '#0D0B0D'],
-    stripe: '#A855F7',
-  },
-};
+import { getPharmacyTierTheme } from '../../theme/tierThemes.js';
 
 const CHECK_DISC_GRADIENTS = {
   dark: ['#52696B', '#394546', '#232323'],
   light: ['#DCFCF7', '#EAF7F5', '#FFFFFF'],
 };
-
-const DEFAULT_PERKS = [
-  'Direct-from-Manufacturer trade schemes',
-  'Higher data sharing honoraria & payout multipliers',
-  'Priority stock allocation & reciprocal generic visibility',
-];
 
 /* ---------- Header geometry ---------- */
 const HV_W = 345;
@@ -106,12 +53,29 @@ const CARD_PATH = `
   Z
 `;
 
-const CardHeader = ({ isDark, cfg, cardBg }) => {
+const CardHeader = ({ isDark, stripeColor, discColors, cardBg }) => {
   const stripes = useMemo(
     () => Array.from({ length: 87 }).map((_, i) => i * 4),
     []
   );
-  const discColors = isDark ? cfg.darkBg : cfg.lightBg;
+
+  const safeDiscColors = Array.isArray(discColors) && discColors.length > 0
+    ? discColors
+    : ['#FFFFFF', '#00C48C'];
+
+  const discStops = useMemo(() => {
+    if (safeDiscColors.length > 2) {
+      return [
+        { offset: '0%', color: safeDiscColors[0] },
+        { offset: '45%', color: safeDiscColors[1] },
+        { offset: '100%', color: safeDiscColors[safeDiscColors.length - 1] },
+      ];
+    }
+    return [
+      { offset: '0%', color: safeDiscColors[0] },
+      { offset: '100%', color: safeDiscColors[safeDiscColors.length - 1] },
+    ];
+  }, [safeDiscColors]);
 
   return (
     <Svg width="100%" height="100%" viewBox={`0 0 ${HV_W} ${HV_H}`}>
@@ -120,16 +84,14 @@ const CardHeader = ({ isDark, cfg, cardBg }) => {
           <Path d={CARD_PATH} />
         </ClipPath>
         <SvgLinearGradient id="tierLevelStripeGrad" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0%" stopColor={cfg.stripe} stopOpacity={isDark ? 0.4 : 0.3} />
-          <Stop offset="55%" stopColor={cfg.stripe} stopOpacity={isDark ? 0.15 : 0.1} />
-          <Stop offset="100%" stopColor={cfg.stripe} stopOpacity={0} />
+          <Stop offset="0%" stopColor={stripeColor || '#00C48C'} stopOpacity={isDark ? 0.4 : 0.3} />
+          <Stop offset="55%" stopColor={stripeColor || '#00C48C'} stopOpacity={isDark ? 0.15 : 0.1} />
+          <Stop offset="100%" stopColor={stripeColor || '#00C48C'} stopOpacity={0} />
         </SvgLinearGradient>
         <SvgLinearGradient id="tierLevelDiscGrad" x1="0.5" y1="0" x2="0.5" y2="1">
-          <Stop offset="0%" stopColor={discColors[0]} />
-          {discColors.length > 2 && (
-            <Stop offset="45%" stopColor={discColors[1]} />
-          )}
-          <Stop offset="100%" stopColor={discColors[discColors.length - 1]} />
+          {discStops.map((stop, idx) => (
+            <Stop key={`disc-stop-${idx}`} offset={stop.offset} stopColor={stop.color} />
+          ))}
         </SvgLinearGradient>
       </Defs>
 
@@ -158,31 +120,36 @@ const CardHeader = ({ isDark, cfg, cardBg }) => {
  * TierLevelUpModal
  *
  * Full-screen gamified celebration modal when a pharmacy reaches a new PII tier.
+ * Driven by getPharmacyTierTheme(tier, isDark).
  *
  * @param {Object} props
  * @param {boolean} props.visible
  * @param {Function} props.onClose
- * @param {'general_trade' | 'established' | 'key_account' | 'flagship'} [props.tier='established']
+ * @param {string} [props.tier='key_account']
  * @param {Array<string>} [props.perks]
  */
 export const TierLevelUpModal = ({
   visible,
   onClose,
-  tier = 'established',
-  perks = DEFAULT_PERKS,
+  tier = 'key_account',
+  perks,
 }) => {
   const { isDark } = useTheme();
 
-  const normTier = useMemo(() => {
-    const raw = String(tier || 'established').toLowerCase();
-    if (raw.includes('flag') || raw.includes('dist')) return 'flagship';
-    if (raw.includes('key') || raw.includes('sen')) return 'key_account';
-    if (raw.includes('gen') || raw.includes('emer')) return 'general_trade';
-    return 'established';
-  }, [tier]);
+  const tierTheme = useMemo(() => {
+    return getPharmacyTierTheme(tier, isDark);
+  }, [tier, isDark]);
 
-  const tierInfo = TIER_LEVELS[normTier] || TIER_LEVELS.established;
-  const cfg = TIER_DISC_CONFIG[normTier] || TIER_DISC_CONFIG.established;
+  const {
+    key: normTier,
+    label: tierName,
+    level,
+    accentColor,
+    discBg,
+    perks: defaultPerks,
+  } = tierTheme;
+
+  const activePerks = perks || defaultPerks;
   const cardBg = isDark ? '#141416' : '#FFFFFF';
 
   if (!visible) return null;
@@ -211,7 +178,12 @@ export const TierLevelUpModal = ({
         <View style={[styles.card, { backgroundColor: cardBg }]}>
           {/* Card Header SVG with Pinstripes & Circular Disc */}
           <View style={styles.headerSvgWrapper}>
-            <CardHeader isDark={isDark} cfg={cfg} cardBg={cardBg} />
+            <CardHeader
+              isDark={isDark}
+              stripeColor={accentColor}
+              discColors={discBg}
+              cardBg={cardBg}
+            />
             <View style={styles.gemContainer}>
               <TierGemIcon tier={normTier} size={scale(54)} isApex />
             </View>
@@ -224,16 +196,16 @@ export const TierLevelUpModal = ({
             </AppText>
 
             <AppText style={[styles.tierTitle, { color: isDark ? '#FFFFFF' : '#020202' }]}>
-              {`${tierInfo.name} Tier Unlocked`}
+              {`${tierName} Tier Unlocked`}
             </AppText>
 
-            <AppText style={[styles.levelSubtitle, { color: cfg.stripe }]}>
-              {`Level ${tierInfo.level} Retail Partner`}
+            <AppText style={[styles.levelSubtitle, { color: accentColor }]}>
+              {`Level ${level} Retail Partner`}
             </AppText>
 
             {/* Perks Timeline */}
             <View style={styles.perksList}>
-              {perks.map((perk, i) => (
+              {activePerks.map((perk, i) => (
                 <View key={i} style={styles.perkRow}>
                   <LinearGradient
                     colors={isDark ? CHECK_DISC_GRADIENTS.dark : CHECK_DISC_GRADIENTS.light}
@@ -242,7 +214,7 @@ export const TierLevelUpModal = ({
                     <Svg width={scale(12)} height={scale(12)} viewBox="0 0 24 24" fill="none">
                       <Path
                         d="M5 13L9 17L19 7"
-                        stroke={cfg.stripe}
+                        stroke={accentColor}
                         strokeWidth="2.5"
                         strokeLinecap="round"
                         strokeLinejoin="round"
@@ -260,7 +232,7 @@ export const TierLevelUpModal = ({
             <TouchableOpacity
               activeOpacity={0.85}
               onPress={onClose}
-              style={[styles.claimButton, { backgroundColor: cfg.stripe }]}
+              style={[styles.claimButton, { backgroundColor: accentColor }]}
             >
               <AppText style={styles.claimButtonText}>
                 Claim Perks & Continue

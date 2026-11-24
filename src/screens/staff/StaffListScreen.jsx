@@ -108,7 +108,9 @@ export const StaffListScreen = ({ navigation }) => {
     <AppScreenContainer
       withAmbientGlow={true}
       withHorizontalPadding={false}
+      withBottomNavClearance={false}
       scrollable={false}
+      contentContainerStyle={{ paddingBottom: 0 }}
       style={styles.screenRoot}
     >
       <StatusBar
@@ -149,6 +151,7 @@ export const StaffListScreen = ({ navigation }) => {
             onChangeText={setSearchQuery}
             placeholder="Search Staff Profiles..."
             placeholderTextColor={isDark ? colors.text?.secondary || '#ABABAB' : '#9CA3AF'}
+            returnKeyType="search"
             style={[
               styles.textInput,
               { color: colors.text?.primary || '#020202' },
@@ -183,9 +186,11 @@ export const StaffListScreen = ({ navigation }) => {
         )}
         contentContainerStyle={[
           styles.listContent,
-          { paddingBottom: insets.bottom + verticalScale(36) },
+          { paddingBottom: Math.max(insets?.bottom ?? 0, verticalScale(16)) + verticalScale(12) },
         ]}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <AppText

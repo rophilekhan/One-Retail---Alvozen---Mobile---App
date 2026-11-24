@@ -392,11 +392,10 @@ export const GiftBoxIcon = ({ size = 44, color = '#38BDF8' }) => {
  */
 export const PointsStarIcon = ({ size = 20, color = '#1E293B' }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <Circle cx="12" cy="12" r="10.5" stroke={color} strokeWidth="1.5" />
     <Path
       d="M12 6.5L13.6 10.2L17.5 10.6L14.5 13.2L15.4 17.1L12 15.1L8.6 17.1L9.5 13.2L6.5 10.6L10.4 10.2L12 6.5Z"
       stroke={color}
-      strokeWidth="1.4"
+      strokeWidth="1.6"
       strokeLinejoin="round"
     />
   </Svg>

@@ -107,7 +107,6 @@ export const PrescriptionsPerDayWidget = ({
 
 const styles = StyleSheet.create({
   card: {
-    padding: scale(16),
     marginBottom: verticalScale(14),
   },
   headerRow: {

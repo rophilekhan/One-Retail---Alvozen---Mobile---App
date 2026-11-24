@@ -10,12 +10,13 @@ import {
   AppInput,
   AppToast,
   MetricIconDisc,
+  QuantityStepperInput,
 } from '../../components/core/index.js';
 import { useTheme } from '../../theme/index.js';
 import { scale, verticalScale } from '../../theme/responsive.js';
 import { useDispenseStore } from '../../store/useDispenseStore.js';
 import { usePharmacyStore } from '../../store/usePharmacyStore.js';
-import { SubstituteSearchModal } from './SubstituteSearchModal.jsx';
+import { SelectMedicineModal } from '../../components/prescription/index.js';
 import {
   PillIcon,
   PillsMedicineIcon,
@@ -34,7 +35,7 @@ import {
  * @param {Object} props
  * @param {Object} props.navigation
  */
-export const DispenseConfirmationScreen = ({ navigation }) => {
+export const DispenseConfirmationScreen = ({ navigation, route }) => {
   const { colors, spacing, isDark } = useTheme();
   const { scannedItems, updateDispensedQuantity, substituteBrand, clearDispenseSession, activePrescription } =
     useDispenseStore();
@@ -43,6 +44,21 @@ export const DispenseConfirmationScreen = ({ navigation }) => {
   const [activeSubstituteItemId, setActiveSubstituteItemId] = useState(null);
   const [substituteModalVisible, setSubstituteModalVisible] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Sync route params when coming from GenericMappedBrandsSheet or UnavailableBrandSheet
+  React.useEffect(() => {
+    if (route?.params?.itemId && (route?.params?.brandName || route?.params?.selectedBrand)) {
+      const targetId = route.params.itemId;
+      const brand = route.params.selectedBrand || {
+        brandId: route.params.brandId,
+        name: route.params.brandName,
+        brandName: route.params.brandName,
+        tp: route.params.tp,
+        mrp: route.params.mrp,
+      };
+      substituteBrand(targetId, brand, route.params.substituteReason || 'Generic Mapped');
+    }
+  }, [route?.params]);
 
   // Financial calculations
   let totalMRP = 0;
@@ -67,12 +83,15 @@ export const DispenseConfirmationScreen = ({ navigation }) => {
     setSubstituteModalVisible(true);
   };
 
-  const handleSelectSubstitute = (subBrand, reason) => {
+  const handleSelectSubstitute = (subBrand) => {
     if (activeSubstituteItemId) {
+      const brandTitle = subBrand?.brandName || subBrand?.name || 'Substitute Brand';
+      const reason = 'Out of Stock';
       substituteBrand(activeSubstituteItemId, subBrand, reason);
+      setSubstituteModalVisible(false);
       AppToast.show({
         title: 'Brand Substituted',
-        message: `Substituted with ${subBrand.name} (${reason})`,
+        message: `Substituted with ${brandTitle} (${reason})`,
         type: 'info',
       });
     }
@@ -162,16 +181,16 @@ export const DispenseConfirmationScreen = ({ navigation }) => {
                 )}
               </View>
 
-              {/* Quantity Input for Non-Integrated POS */}
+              {/* Quantity Stepper for Non-Integrated POS */}
               <View style={styles.qtyBox}>
-                <AppText variant="caption" colorType="muted" style={{ marginBottom: 2 }}>
+                <AppText variant="caption" colorType="muted" style={{ marginBottom: 4 }}>
                   Dispensed Qty
                 </AppText>
-                <AppInput
-                  value={String(item.dispensedQuantity || 0)}
-                  onChangeText={(val) => updateDispensedQuantity(item.id, val)}
-                  keyboardType="number-pad"
-                  style={styles.qtyInput}
+                <QuantityStepperInput
+                  value={Number(item.dispensedQuantity) || 1}
+                  onChange={(val) => updateDispensedQuantity(item.id, val)}
+                  min={1}
+                  style={{ width: scale(116), height: verticalScale(40) }}
                 />
               </View>
             </View>
@@ -227,7 +246,7 @@ export const DispenseConfirmationScreen = ({ navigation }) => {
       <GlassCard style={styles.card}>
         <View style={styles.rewardRow}>
           <MetricIconDisc variant="gold" size={40} marginRight={10}>
-            <PointsStarIcon size={20} color="#FFFFFF" />
+            <PointsStarIcon size={20} color={isDark ? '#FFFFFF' : '#0F4761'} />
           </MetricIconDisc>
           <View style={{ flex: 1 }}>
             <AppText variant="bodyMediumMedium" colorType="primary">
@@ -252,11 +271,12 @@ export const DispenseConfirmationScreen = ({ navigation }) => {
 
       <View style={{ height: verticalScale(20) }} />
 
-      {/* Substitute Search Modal */}
-      <SubstituteSearchModal
+      {/* Ported OneRx SelectMedicineModal for Dispense Substitution Search */}
+      <SelectMedicineModal
         visible={substituteModalVisible}
         onClose={() => setSubstituteModalVisible(false)}
-        onSelectSubstitute={handleSelectSubstitute}
+        onSelectMedicine={handleSelectSubstitute}
+        tabs={['Generic', 'Therapeutic Segment', 'Brand']}
       />
     </AppScreenContainer>
   );

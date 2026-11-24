@@ -1,4 +1,9 @@
 import { create } from 'zustand';
+import {
+  resolveTierFromPoints,
+  PHARMACY_TIERS_CONFIG,
+  normalizePharmacyTier,
+} from '../theme/tierThemes.js';
 
 /**
  * PII Tier definitions according to ONERETAIL_PRD.md:
@@ -63,15 +68,44 @@ const initialState = {
   isSystemIntegrated: false,
 
   // Pharmacy Impact Index (PII) + Wallet
-  piiScore: 0,
-  piiTier: PII_TIERS.GENERAL_TRADE,
-  walletBalance: 0,
+  piiScore: 842,
+  piiPoints: 842,
+  piiTier: PII_TIERS.KEY_ACCOUNT,
+  piiTierKey: 'key_account',
+  levelUpNotification: null,
+  walletBalance: 48500,
   pendingCashout: 0,
   paymentHistory: [],
 
   // Settings
   skuVisibilityEnabled: true, // PRD: Reciprocal SKU visibility flag (default true)
   isLoading: false,
+
+  // Closing uploads history (for non-integrated pharmacies)
+  closingUploadsHistory: [
+    {
+      id: 'closing_1',
+      date: '22 Nov 2026',
+      fileName: 'Daily_Closing_2026_11_22.xlsx',
+      fileType: 'XLSX',
+      skuCount: 142,
+      period: 'Daily Closing',
+      status: 'Verified',
+      pointsEarned: 25,
+      timestamp: Date.now() - 86400000,
+    },
+    {
+      id: 'closing_2',
+      date: '21 Nov 2026',
+      fileName: 'Daily_Closing_2026_11_21.csv',
+      fileType: 'CSV',
+      skuCount: 138,
+      period: 'Daily Closing',
+      status: 'Synced',
+      pointsEarned: 25,
+      timestamp: Date.now() - 172800000,
+    },
+  ],
 };
 
 /**
@@ -182,18 +216,105 @@ export const usePharmacyStore = create((set, get) => ({
     set({ skuVisibilityEnabled: Boolean(enabled) });
   },
 
-  updatePii: ({ score, tier, walletBalance, pendingCashout }) => {
+  setPiiPoints: (points) => {
+    const newPoints = Number(points) || 0;
+    const oldTierKey = get().piiTierKey || normalizePharmacyTier(get().piiTier);
+    const newTierKey = resolveTierFromPoints(newPoints);
+    const hasTierChanged = oldTierKey !== newTierKey;
+
     set((state) => ({
-      piiScore: score !== undefined ? score : state.piiScore,
-      piiTier: tier || state.piiTier,
+      ...state,
+      piiPoints: newPoints,
+      piiScore: newPoints,
+      piiTierKey: newTierKey,
+      piiTier: PHARMACY_TIERS_CONFIG[newTierKey]?.label || 'Established',
+      levelUpNotification: hasTierChanged
+        ? {
+            tierKey: newTierKey,
+            tierName: PHARMACY_TIERS_CONFIG[newTierKey]?.label || 'Established',
+            prevTierKey: oldTierKey,
+          }
+        : state.levelUpNotification,
+    }));
+  },
+
+  setPiiTier: (tierKeyOrName) => {
+    const tierKey = normalizePharmacyTier(tierKeyOrName);
+    const tierLabel = PHARMACY_TIERS_CONFIG[tierKey]?.label || 'Established';
+    const oldTierKey = get().piiTierKey;
+
+    set((state) => ({
+      ...state,
+      piiTier: tierLabel,
+      piiTierKey: tierKey,
+      levelUpNotification: oldTierKey !== tierKey
+        ? {
+            tierKey,
+            tierName: tierLabel,
+            prevTierKey: oldTierKey,
+          }
+        : state.levelUpNotification,
+    }));
+  },
+
+  clearLevelUpNotification: () => {
+    set({ levelUpNotification: null });
+  },
+
+  updatePii: ({ score, points, tier, walletBalance, pendingCashout }) => {
+    const rawScore = points !== undefined ? points : score;
+    const newPoints = rawScore !== undefined ? Number(rawScore) : get().piiScore;
+    const oldTierKey = get().piiTierKey || normalizePharmacyTier(get().piiTier);
+    const resolvedTierKey = tier ? normalizePharmacyTier(tier) : resolveTierFromPoints(newPoints);
+    const tierLabel = PHARMACY_TIERS_CONFIG[resolvedTierKey]?.label || 'Established';
+    const hasTierChanged = oldTierKey !== resolvedTierKey;
+
+    set((state) => ({
+      ...state,
+      piiScore: newPoints,
+      piiPoints: newPoints,
+      piiTier: tierLabel,
+      piiTierKey: resolvedTierKey,
       walletBalance: walletBalance !== undefined ? walletBalance : state.walletBalance,
       pendingCashout: pendingCashout !== undefined ? pendingCashout : state.pendingCashout,
+      levelUpNotification: hasTierChanged
+        ? {
+            tierKey: resolvedTierKey,
+            tierName: tierLabel,
+            prevTierKey: oldTierKey,
+          }
+        : state.levelUpNotification,
     }));
   },
 
   addPaymentHistoryRecord: (record) => {
     set((state) => ({
       paymentHistory: [record, ...state.paymentHistory],
+    }));
+  },
+
+  addClosingUploadRecord: (record) => {
+    const pointsAwarded = record?.pointsEarned || 25;
+    const currentScore = get().piiScore || 842;
+    const nextScore = currentScore + pointsAwarded;
+    get().setPiiPoints(nextScore);
+
+    set((state) => ({
+      closingUploadsHistory: [
+        {
+          id: 'closing_' + Date.now(),
+          date: record?.date || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+          fileName: record?.fileName || 'Closing_Report.xlsx',
+          fileType: record?.fileType || 'XLSX',
+          skuCount: record?.skuCount || 120,
+          period: record?.period || 'Daily Closing',
+          status: 'Synced',
+          pointsEarned: pointsAwarded,
+          timestamp: Date.now(),
+          ...record,
+        },
+        ...(state.closingUploadsHistory || []),
+      ],
     }));
   },
 

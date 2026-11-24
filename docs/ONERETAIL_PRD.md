@@ -25,7 +25,7 @@ o	Sign-up / User set-up:
 	Further License Number – 2 Expiry Date
 	Further License Number – 2 picture
 	Pharmacy Address + Location Pin
-	Pharmacy Façade Photo
+	Pharmacy Facade Photo
 o	Pharmacy Impact Index: Pharmacy sees their own composite score and what drives it
 
 •	Core Features – Home Page:

@@ -19,7 +19,7 @@ const Stack = createNativeStackNavigator();
  * 4. AccountSetup: Phone, Email, Username, Password registration
  * 5. OtpVerification: 4-digit SMS/Email verification
  * 6. PharmacyLicenses: Mandatory DSL and Further Licenses 1 & 2
- * 7. PharmacyLocation: Physical Address, GPS Pin & Storefront Façade Photo
+ * 7. PharmacyLocation: Physical Address, GPS Pin & Storefront Facade Photo
  */
 export const AuthNavigator = () => {
   return (

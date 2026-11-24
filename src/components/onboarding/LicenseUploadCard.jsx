@@ -28,7 +28,7 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
   UploadCloudCustomIcon,
-} from '../../assets/vectors/AuthIcons.jsx';
+} from '../../assets/vectors/index.js';
 
 const MONTH_NAMES = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',

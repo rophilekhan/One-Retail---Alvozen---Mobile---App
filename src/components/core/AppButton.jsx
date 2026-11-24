@@ -5,7 +5,9 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import { useTheme } from '../../theme/index.js';
+import { scale, verticalScale } from '../../theme/responsive.js';
 import AppText from './AppText.jsx';
 
 /**
@@ -14,7 +16,7 @@ import AppText from './AppText.jsx';
  * Fixes OneRx dark mode contrast bugs (never black text on black background) & shadow bugs.
  *
  * @param {Object} props
- * @param {'primary' | 'secondary' | 'accent' | 'ghost' | 'danger' | 'teal' | 'outline' | 'iconOnly'} [props.variant='primary']
+ * @param {'primary' | 'secondary' | 'accent' | 'ghost' | 'danger' | 'teal' | 'outline' | 'details' | 'iconOnly'} [props.variant='primary']
  * @param {'lg' | 'md' | 'sm' | 'xs'} [props.size='lg']
  * @param {string} [props.title]
  * @param {React.ReactNode} [props.iconLeft]
@@ -47,9 +49,10 @@ export const AppButton = ({
     md: { height: spacing.buttonHeightSm, paddingHorizontal: spacing.lg },
     sm: { height: 36, paddingHorizontal: spacing.md },
     xs: { height: spacing.buttonHeightXs, paddingHorizontal: spacing.sm },
+    details: { height: verticalScale(34), paddingHorizontal: scale(12) },
   };
 
-  const currentSize = sizeStyles[size] || sizeStyles.lg;
+  const currentSize = variant === 'details' && size === 'lg' ? sizeStyles.details : (sizeStyles[size] || sizeStyles.lg);
 
   // Variant styling with guaranteed high-contrast text in both Light & Dark modes
   const getVariantStyles = () => {
@@ -57,7 +60,7 @@ export const AppButton = ({
       case 'primary':
       case 'teal':
         return {
-          backgroundColor: colors.brand.primary, // #009BA9
+          backgroundColor: isDark ? (colors.brand?.primary || '#009BA9') : (colors.brand?.primaryDark || '#0F4761'),
           borderColor: 'transparent',
           borderWidth: 0,
           textColor: '#FFFFFF',
@@ -69,13 +72,13 @@ export const AppButton = ({
           backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : (colors.surface?.card || '#FFFFFF'),
           borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : (colors.border?.default || '#E4E4E7'),
           borderWidth: 1,
-          textColor: colors.text.primary,
+          textColor: isDark ? '#FFFFFF' : (colors.brand?.primaryDark || '#0F4761'),
           shadow: shadows.subtle,
         };
 
       case 'accent':
         return {
-          backgroundColor: colors.brand.accent, // #fb6b03
+          backgroundColor: colors.brand?.accent || '#FB6B03',
           borderColor: 'transparent',
           borderWidth: 0,
           textColor: '#FFFFFF',
@@ -84,7 +87,7 @@ export const AppButton = ({
 
       case 'danger':
         return {
-          backgroundColor: colors.status.error, // #FF4B4B
+          backgroundColor: colors.status?.error || '#FF4B4B',
           borderColor: 'transparent',
           borderWidth: 0,
           textColor: '#FFFFFF',
@@ -94,9 +97,18 @@ export const AppButton = ({
       case 'outline':
         return {
           backgroundColor: 'transparent',
-          borderColor: colors.border.focused || (isDark ? '#FFFFFF' : '#020202'),
+          borderColor: isDark ? (colors.brand?.primary || '#009BA9') : (colors.brand?.primaryDark || '#0F4761'),
           borderWidth: 1.5,
-          textColor: colors.text.primary,
+          textColor: isDark ? '#FFFFFF' : (colors.brand?.primaryDark || '#0F4761'),
+          shadow: shadows.none,
+        };
+
+      case 'details':
+        return {
+          backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 155, 169, 0.10)',
+          borderColor: isDark ? 'rgba(255, 255, 255, 0.16)' : 'rgba(0, 155, 169, 0.22)',
+          borderWidth: 1,
+          textColor: isDark ? '#FFFFFF' : (colors.brand?.primaryDark || '#0F4761'),
           shadow: shadows.none,
         };
 
@@ -105,7 +117,7 @@ export const AppButton = ({
           backgroundColor: 'transparent',
           borderColor: 'transparent',
           borderWidth: 0,
-          textColor: colors.text.primary,
+          textColor: isDark ? '#FFFFFF' : (colors.brand?.primaryDark || '#0F4761'),
           shadow: shadows.none,
         };
 
@@ -168,7 +180,25 @@ export const AppButton = ({
           ) : (
             children
           )}
-          {iconRight && <View style={styles.iconRight}>{iconRight}</View>}
+          {iconRight ? (
+            <View style={styles.iconRight}>{iconRight}</View>
+          ) : variant === 'details' ? (
+            <Svg
+              width={scale(12)}
+              height={scale(12)}
+              viewBox="0 0 24 24"
+              fill="none"
+              style={styles.iconRight}
+            >
+              <Path
+                d="M9 6L15 12L9 18"
+                stroke={vStyle.textColor}
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </Svg>
+          ) : null}
         </View>
       )}
     </TouchableOpacity>

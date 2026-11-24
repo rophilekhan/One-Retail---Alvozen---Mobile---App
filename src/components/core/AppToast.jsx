@@ -156,17 +156,17 @@ export const AppToast = () => {
   const { type, title, message } = toastConfig;
   const hasTitle = Boolean(title && title.trim().length > 0);
 
-  // Dynamic theme palette per toast type
+  // Dynamic theme palette per toast type with high-opacity opaque-glass in Dark Mode
   const getThemePalette = () => {
     switch (type) {
       case 'success':
         return isDark
           ? {
-              containerBg: 'rgba(16, 185, 129, 0.20)',
+              containerBg: '#12171E',
               containerBorder: '#10B981',
               badgeBg: '#10B981',
-              titleColor: '#ECFDF5',
-              textColor: '#A7F3D0',
+              titleColor: '#FFFFFF',
+              textColor: '#D9D9D9',
               closeColor: '#6EE7B7',
             }
           : {
@@ -180,11 +180,11 @@ export const AppToast = () => {
       case 'error':
         return isDark
           ? {
-              containerBg: 'rgba(239, 68, 68, 0.22)',
+              containerBg: '#12171E',
               containerBorder: '#EF4444',
               badgeBg: '#EF4444',
-              titleColor: '#FEF2F2',
-              textColor: '#FCA5A5',
+              titleColor: '#FFFFFF',
+              textColor: '#D9D9D9',
               closeColor: '#F87171',
             }
           : {
@@ -198,11 +198,11 @@ export const AppToast = () => {
       case 'warning':
         return isDark
           ? {
-              containerBg: 'rgba(245, 158, 11, 0.22)',
+              containerBg: '#12171E',
               containerBorder: '#F59E0B',
               badgeBg: '#F59E0B',
-              titleColor: '#FFFBEB',
-              textColor: '#FDE68A',
+              titleColor: '#FFFFFF',
+              textColor: '#D9D9D9',
               closeColor: '#FBBF24',
             }
           : {
@@ -217,11 +217,11 @@ export const AppToast = () => {
       default:
         return isDark
           ? {
-              containerBg: 'rgba(0, 155, 169, 0.20)',
+              containerBg: '#12171E',
               containerBorder: '#009BA9',
               badgeBg: '#009BA9',
-              titleColor: '#ECFEFF',
-              textColor: '#A5F3FC',
+              titleColor: '#FFFFFF',
+              textColor: '#D9D9D9',
               closeColor: '#67E8F9',
             }
           : {
@@ -429,11 +429,11 @@ const styles = StyleSheet.create({
     paddingVertical: verticalScale(10),
     borderRadius: scale(18),
     borderWidth: 1.2,
-    elevation: 10,
+    elevation: 12,
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.16,
-    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
   },
   iconBadge: {
     width: scale(36),

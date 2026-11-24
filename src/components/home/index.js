@@ -1,3 +1,9 @@
+export { HomeHeader } from './HomeHeader.jsx';
+export { TerritoryAnalyticsCard } from './TerritoryAnalyticsCard.jsx';
+export { HomeOperationalActions } from './HomeOperationalActions.jsx';
 export { PrescriptionsPerDayWidget } from './PrescriptionsPerDayWidget.jsx';
 export { TopBrandsTerritoryCard } from './TopBrandsTerritoryCard.jsx';
 export { TerritoryBenchmarkingCard } from './TerritoryBenchmarkingCard.jsx';
+export { RxTrendAreaChart } from './RxTrendAreaChart.jsx';
+export { TerritoryShareDonutChart } from './TerritoryShareDonutChart.jsx';
+export { TerritoryBenchmarkBarChart } from './TerritoryBenchmarkBarChart.jsx';

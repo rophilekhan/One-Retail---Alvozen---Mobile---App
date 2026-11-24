@@ -3,6 +3,8 @@ import { View, StyleSheet, FlatList, Pressable, TextInput, Keyboard } from 'reac
 import { useTheme } from '../../theme/index.js';
 import { scale, verticalScale, scaleFont } from '../../theme/responsive.js';
 import { AppText } from './AppText.jsx';
+import { AppModal } from './AppModal.jsx';
+import { AppButton } from './AppButton.jsx';
 
 const ITEM_HEIGHT = verticalScale(48);
 
@@ -306,7 +308,7 @@ const CustomWheel = ({
  * Supports configurable startYear and endYear for both past dates (birth dates)
  * and future dates (drug license expirations).
  */
-export const CustomDatePicker = ({
+export const CustomDatePickerWheel = ({
   dobDay,
   setDobDay,
   dobMonth,
@@ -745,5 +747,191 @@ const styles = StyleSheet.create({
     textAlignVertical: 'center',
   },
 });
+
+/**
+ * Robust date parser supporting Date, objects, and various string formats (DD MMM YYYY, YYYY-MM-DD, DD/MM/YYYY)
+ */
+export const parseDateParts = (input) => {
+  if (!input) {
+    const now = new Date();
+    return {
+      d: String(now.getDate()).padStart(2, '0'),
+      m: MONTHS[now.getMonth()],
+      y: String(now.getFullYear()),
+    };
+  }
+  if (input instanceof Date && !isNaN(input.getTime())) {
+    return {
+      d: String(input.getDate()).padStart(2, '0'),
+      m: MONTHS[input.getMonth()],
+      y: String(input.getFullYear()),
+    };
+  }
+  if (typeof input === 'object' && (input.day || input.d)) {
+    const day = input.day || input.d;
+    const month = input.month || input.m;
+    const year = input.year || input.y;
+    return {
+      d: String(day).padStart(2, '0'),
+      m: resolveMonth(String(month)) || 'Jan',
+      y: String(year),
+    };
+  }
+  if (typeof input === 'string') {
+    const trimmed = input.trim();
+    // Check YYYY-MM-DD or YYYY/MM/DD
+    if (/^\d{4}[-/]\d{1,2}[-/]\d{1,2}$/.test(trimmed)) {
+      const [y, m, d] = trimmed.split(/[-/]/);
+      const mIdx = Math.max(0, Math.min(11, parseInt(m, 10) - 1));
+      return {
+        d: d.padStart(2, '0'),
+        m: MONTHS[mIdx],
+        y,
+      };
+    }
+    // Check DD MMM YYYY or DD-MM-YYYY or DD/MM/YYYY
+    const parts = trimmed.split(/[\s/-]+/);
+    if (parts.length >= 3) {
+      let d = parts[0].padStart(2, '0');
+      let m = resolveMonth(parts[1]) || 'Jan';
+      let y = parts[2];
+      // If first token is 4-digit year
+      if (parts[0].length === 4) {
+        y = parts[0];
+        m = resolveMonth(parts[1]) || 'Jan';
+        d = parts[2].padStart(2, '0');
+      }
+      return { d, m, y };
+    }
+  }
+  const now = new Date();
+  return {
+    d: String(now.getDate()).padStart(2, '0'),
+    m: MONTHS[now.getMonth()],
+    y: String(now.getFullYear()),
+  };
+};
+
+/**
+ * ModalDatePicker
+ * BottomSheet modal picker matching OneRx 1:1.
+ * Supports:
+ * - visible
+ * - onClose
+ * - title
+ * - selectedDate / value
+ * - minDate, maxDate
+ * - startYear, endYear
+ * - onSelect / onConfirm
+ */
+export const ModalDatePicker = ({
+  visible,
+  onClose,
+  title = 'Select Date',
+  selectedDate,
+  value,
+  minDate,
+  maxDate,
+  startYear: propStartYear,
+  endYear: propEndYear,
+  onSelect,
+  onConfirm,
+}) => {
+  const { colors, isDark } = useTheme();
+  const dateValue = selectedDate || value;
+  const initial = useMemo(() => parseDateParts(dateValue), [dateValue]);
+
+  const [dobDay, setDobDay] = useState(initial.d);
+  const [dobMonth, setDobMonth] = useState(initial.m);
+  const [dobYear, setDobYear] = useState(initial.y);
+
+  useEffect(() => {
+    if (visible && dateValue) {
+      const parsed = parseDateParts(dateValue);
+      setDobDay(parsed.d);
+      setDobMonth(parsed.m);
+      setDobYear(parsed.y);
+    }
+  }, [visible, dateValue]);
+
+  const computedEndYear = useMemo(() => {
+    if (propEndYear) return Number(propEndYear);
+    if (maxDate instanceof Date) return maxDate.getFullYear();
+    if (typeof maxDate === 'number') return maxDate;
+    return CURRENT_YEAR + 20;
+  }, [propEndYear, maxDate]);
+
+  const computedStartYear = useMemo(() => {
+    if (propStartYear) return Number(propStartYear);
+    if (minDate instanceof Date) return minDate.getFullYear();
+    if (typeof minDate === 'number') return minDate;
+    return 1970;
+  }, [propStartYear, minDate]);
+
+  const handleDone = () => {
+    Keyboard.dismiss();
+    const formatted = `${dobDay} ${dobMonth} ${dobYear}`;
+    const dateObj = {
+      day: dobDay,
+      month: dobMonth,
+      year: dobYear,
+      formatted,
+    };
+    onSelect?.(formatted);
+    onConfirm?.(formatted, dateObj);
+    onClose?.();
+  };
+
+  return (
+    <AppModal
+      visible={visible}
+      onClose={onClose}
+      title={title}
+      type="bottomSheet"
+    >
+      <CustomDatePickerWheel
+        visible={visible}
+        dobDay={dobDay}
+        setDobDay={setDobDay}
+        dobMonth={dobMonth}
+        setDobMonth={setDobMonth}
+        dobYear={dobYear}
+        setDobYear={setDobYear}
+        startYear={computedStartYear}
+        endYear={computedEndYear}
+      />
+
+      <AppButton
+        title="Done"
+        variant="primary"
+        size="lg"
+        onPress={handleDone}
+        style={{
+          marginTop: verticalScale(16),
+          marginBottom: verticalScale(8),
+        }}
+      />
+    </AppModal>
+  );
+};
+
+/**
+ * CustomDatePicker
+ * Universal dual-mode picker:
+ * - When `onClose` or `onSelect` or (`visible` with `onConfirm` and without `setDobDay`) is passed:
+ *   renders `ModalDatePicker` (BottomSheet modal).
+ * - Otherwise:
+ *   renders `CustomDatePickerWheel` inline for embedding directly inside card layouts.
+ */
+export const CustomDatePicker = (props) => {
+  if (
+    props.onClose ||
+    props.onSelect ||
+    (props.visible !== undefined && props.onConfirm && !props.setDobDay)
+  ) {
+    return <ModalDatePicker {...props} />;
+  }
+  return <CustomDatePickerWheel {...props} />;
+};
 
 export default CustomDatePicker;

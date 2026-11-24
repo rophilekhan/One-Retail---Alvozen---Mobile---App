@@ -74,3 +74,82 @@ jest.mock('react-native-image-picker', () => ({
   launchImageLibrary: jest.fn(() => Promise.resolve({ assets: [{ uri: 'mock_gallery_uri.jpg' }] })),
 }));
 
+jest.mock('@react-native-community/geolocation', () => ({
+  setRNConfiguration: jest.fn(),
+  requestAuthorization: jest.fn(() => Promise.resolve('granted')),
+  getCurrentPosition: jest.fn((success) =>
+    success({
+      coords: {
+        latitude: 31.5204,
+        longitude: 74.3587,
+        altitude: 0,
+        accuracy: 10,
+        altitudeAccuracy: 0,
+        heading: 0,
+        speed: 0,
+      },
+      timestamp: Date.now(),
+    })
+  ),
+  watchPosition: jest.fn(() => 1),
+  clearWatch: jest.fn(),
+  stopObserving: jest.fn(),
+}));
+
+jest.mock('react-native-vision-camera', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  const MockCamera = React.forwardRef((props, ref) => React.createElement(View, { ...props, ref }));
+  MockCamera.getCameraPermissionStatus = jest.fn(() => Promise.resolve('granted'));
+  MockCamera.requestCameraPermission = jest.fn(() => Promise.resolve('granted'));
+  return {
+    Camera: MockCamera,
+    useCameraDevice: jest.fn(() => ({ id: 'back', position: 'back' })),
+    useCameraPermission: jest.fn(() => ({
+      hasPermission: true,
+      requestPermission: jest.fn(() => Promise.resolve(true)),
+    })),
+    useCodeScanner: jest.fn(() => ({})),
+  };
+});
+
+jest.mock('@react-native-documents/picker', () => ({
+  pick: jest.fn(() =>
+    Promise.resolve([
+      {
+        uri: 'file:///mock/closing_sales_nov_2026.xlsx',
+        name: 'closing_sales_nov_2026.xlsx',
+        size: 45000,
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      },
+    ])
+  ),
+  types: {
+    xls: 'public.spreadsheet',
+    xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    csv: 'public.comma-separated-values-text',
+    pdf: 'com.adobe.pdf',
+    images: 'public.image',
+  },
+  isErrorWithCode: jest.fn(() => false),
+  errorCodes: {
+    OPERATION_CANCELED: 'OPERATION_CANCELED',
+  },
+}));
+
+jest.mock('@react-navigation/native', () => {
+  const actual = jest.requireActual('@react-navigation/native');
+  return {
+    ...actual,
+    useNavigation: () => ({
+      navigate: jest.fn(),
+      goBack: jest.fn(),
+      dispatch: jest.fn(),
+      addListener: jest.fn(() => () => {}),
+    }),
+    useRoute: () => ({ params: {} }),
+    useIsFocused: () => true,
+  };
+});
+
+

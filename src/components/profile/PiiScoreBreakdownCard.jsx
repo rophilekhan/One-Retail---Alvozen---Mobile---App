@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { useTheme } from '../../theme/index.js';
-import { scale, verticalScale } from '../../theme/responsive.js';
+import { scale, verticalScale, scaleFont } from '../../theme/responsive.js';
+import { fontFamilies } from '../../theme/typography.js';
 import { GlassCard, AppText, AppBadge, MetricIconDisc } from '../core/index.js';
 import {
   TierGemIcon,
@@ -10,6 +11,7 @@ import {
   TransferArrowsIconSvg,
   RewardsStarIcon,
 } from '../../assets/vectors/index.js';
+import { getPharmacyTierTheme } from '../../theme/tierThemes.js';
 
 /**
  * PiiScoreBreakdownCard - Visual Composite PII Intelligence & Driver Breakdown
@@ -17,7 +19,13 @@ import {
  * - Pharmacy Impact Index (PII): Score from 0 to 1500
  * - Tiers: General Trade (0-299), Established (300-599), Key Account (600-899), Flagship (900-1500)
  * - 3 Core Drivers: Digital Rx Scans (40%), Pharma Data Sharing (35%), Digital Pharma Engagement (25%)
- * - Wire exact Figma tier gems & vector icons
+ * - Driven identically by getPharmacyTierTheme(tier, isDark)
+ *
+ * @param {Object} props
+ * @param {number} [props.score=842]
+ * @param {string} [props.tier='Key Account']
+ * @param {Object} [props.drivers]
+ * @param {Object} [props.style]
  */
 export const PiiScoreBreakdownCard = ({
   score = 842,
@@ -27,19 +35,9 @@ export const PiiScoreBreakdownCard = ({
 }) => {
   const { colors, isDark } = useTheme();
 
-  const getTierBadgeVariant = (tierName) => {
-    switch (tierName) {
-      case 'Flagship':
-        return 'success';
-      case 'Key Account':
-        return 'accent';
-      case 'Established':
-        return 'brand';
-      case 'General Trade':
-      default:
-        return 'neutral';
-    }
-  };
+  const tierTheme = useMemo(() => {
+    return getPharmacyTierTheme(tier, isDark);
+  }, [tier, isDark]);
 
   const piiDrivers = drivers || {
     rxScansScore: 350,
@@ -58,7 +56,7 @@ export const PiiScoreBreakdownCard = ({
       score: piiDrivers.rxScansScore,
       max: piiDrivers.rxScansMax,
       desc: 'Volume of verified QR-coded prescriptions scanned',
-      color: colors.brand?.primary,
+      color: tierTheme.accentColor,
       icon: <PillIcon color="#FFFFFF" size={16} />,
       tone: 'teal',
     },
@@ -69,7 +67,7 @@ export const PiiScoreBreakdownCard = ({
       score: piiDrivers.dataSharingScore,
       max: piiDrivers.dataSharingMax,
       desc: 'Off-take velocity sharing & reciprocal stock visibility',
-      color: colors.brand?.accent,
+      color: tierTheme.secondaryColor || colors.brand?.accent,
       icon: <TransferArrowsIconSvg color="#FFFFFF" size={16} />,
       tone: 'purple',
     },
@@ -80,7 +78,7 @@ export const PiiScoreBreakdownCard = ({
       score: piiDrivers.engagementScore,
       max: piiDrivers.engagementMax,
       desc: 'Active trade scheme adoption and manufacturer surveys',
-      color: isDark ? '#A78BFA' : '#7C3AED',
+      color: isDark ? '#FBBF24' : '#D97706',
       icon: <RewardsStarIcon color="#FFFFFF" size={16} />,
       tone: 'gold',
     },
@@ -88,7 +86,7 @@ export const PiiScoreBreakdownCard = ({
 
   return (
     <GlassCard style={[styles.card, style]}>
-      {/* 1. Header with Official Tier Gem */}
+      {/* 1. Header with Official Tier Gem & Active Badge */}
       <View style={styles.headerRow}>
         <View style={styles.titleWrap}>
           <AppText variant="caption" colorType="brand" style={styles.overline}>
@@ -100,11 +98,15 @@ export const PiiScoreBreakdownCard = ({
         </View>
 
         <View style={styles.tierGemHeader}>
-          <TierGemIcon tier={tier} size={36} isApex={true} style={{ marginRight: 8 }} />
+          <MetricIconDisc size={36} isDark={isDark} variant={tierTheme.key} style={{ marginRight: scale(8) }}>
+            <TierGemIcon tier={tierTheme.key} size={scale(20)} isApex={true} />
+          </MetricIconDisc>
           <AppBadge
-            label={tier}
-            variant={getTierBadgeVariant(tier)}
-            size="md"
+            label={tierTheme.label}
+            style={{
+              backgroundColor: tierTheme.badgeBg,
+              borderColor: tierTheme.badgeBorder,
+            }}
           />
         </View>
       </View>
@@ -112,7 +114,7 @@ export const PiiScoreBreakdownCard = ({
       {/* 2. Score Arc Gauge Visual */}
       <View style={styles.scoreRow}>
         <View style={styles.scoreArcWrap}>
-          <Svg width={scale(110)} height={scale(110)} viewBox="0 0 100 100">
+          <Svg width={scale(104)} height={scale(104)} viewBox="0 0 100 100">
             <Circle
               cx="50"
               cy="50"
@@ -125,7 +127,7 @@ export const PiiScoreBreakdownCard = ({
               cx="50"
               cy="50"
               r="40"
-              stroke={colors.brand?.primary}
+              stroke={tierTheme.accentColor}
               strokeWidth="9"
               strokeDasharray={`${(score / 1500) * 251.2} 251.2`}
               strokeDashoffset="0"
@@ -135,10 +137,26 @@ export const PiiScoreBreakdownCard = ({
             />
           </Svg>
           <View style={styles.scoreCenterText}>
-            <AppText variant="headlineMedium" colorType="primary" style={styles.scoreNumber}>
+            <AppText
+              style={[
+                styles.scoreNumber,
+                {
+                  color: colors.text.primary,
+                  fontFamily: fontFamilies.monoMedium || 'DMMono-Medium',
+                },
+              ]}
+            >
               {score}
             </AppText>
-            <AppText variant="caption" colorType="muted" style={styles.scoreMax}>
+            <AppText
+              style={[
+                styles.scoreMax,
+                {
+                  color: isDark ? '#94A3B8' : '#64748B',
+                  fontFamily: fontFamilies.monoRegular || 'DMMono-Regular',
+                },
+              ]}
+            >
               / 1500
             </AppText>
           </View>
@@ -146,27 +164,31 @@ export const PiiScoreBreakdownCard = ({
 
         <View style={styles.scoreSummary}>
           <AppText variant="bodyMediumMedium" colorType="primary">
-            {tier} Status
+            {`${tierTheme.label} Status`}
           </AppText>
           <AppText variant="caption" colorType="muted" style={styles.tierDesc}>
-            Earn higher cashout multipliers on prescription QR scans and early access to manufacturer trade schemes.
+            Verified off-take volume, reciprocal SKU visibility, and trade scheme participation.
           </AppText>
-          <AppText variant="caption" colorType="brand" style={styles.rankText}>
-            Top 8% in Territory
-          </AppText>
+          <View style={styles.rankPill}>
+            <AppText
+              style={[styles.rankText, { color: tierTheme.accentColor }]}
+            >
+              Top 8% in Territory
+            </AppText>
+          </View>
         </View>
       </View>
 
       <View style={[styles.divider, { backgroundColor: colors.border?.subtle }]} />
 
-      {/* 3. Driver Breakdown */}
+      {/* 3. Driver Breakdown (3 Vertical Progress Rows) */}
       <AppText variant="titleSmall" colorType="primary" style={styles.driversHeading}>
         Score Activity Drivers
       </AppText>
 
       <View style={styles.driversList}>
         {DRIVER_METRICS.map((driver) => {
-          const progressPct = Math.round((driver.score / driver.max) * 100);
+          const progressPct = Math.min(100, Math.round((driver.score / driver.max) * 100));
 
           return (
             <View key={driver.id} style={styles.driverItem}>
@@ -177,7 +199,13 @@ export const PiiScoreBreakdownCard = ({
 
                 <View style={styles.driverMeta}>
                   <View style={styles.driverTitleRow}>
-                    <AppText variant="bodySmallMedium" colorType="primary">
+                    <AppText
+                      style={[
+                        styles.driverTitleText,
+                        { color: colors.text.primary, fontFamily: fontFamilies.primaryMedium },
+                      ]}
+                      numberOfLines={1}
+                    >
                       {driver.title}
                     </AppText>
                     <AppText variant="caption" colorType="muted">
@@ -190,10 +218,26 @@ export const PiiScoreBreakdownCard = ({
                 </View>
 
                 <View style={styles.driverPointsWrap}>
-                  <AppText variant="bodySmallMedium" colorType="primary">
+                  <AppText
+                    style={[
+                      styles.driverScoreValue,
+                      {
+                        color: colors.text.primary,
+                        fontFamily: fontFamilies.monoMedium || 'DMMono-Medium',
+                      },
+                    ]}
+                  >
                     {driver.score}
                   </AppText>
-                  <AppText variant="caption" colorType="muted">
+                  <AppText
+                    style={[
+                      styles.driverScoreMax,
+                      {
+                        color: isDark ? '#94A3B8' : '#64748B',
+                        fontFamily: fontFamilies.monoRegular || 'DMMono-Regular',
+                      },
+                    ]}
+                  >
                     /{driver.max}
                   </AppText>
                 </View>
@@ -228,7 +272,7 @@ export const PiiScoreBreakdownCard = ({
 const styles = StyleSheet.create({
   card: {
     padding: scale(16),
-    marginVertical: verticalScale(8),
+    marginVertical: verticalScale(6),
   },
   headerRow: {
     flexDirection: 'row',
@@ -238,13 +282,16 @@ const styles = StyleSheet.create({
   },
   titleWrap: {
     flex: 1,
+    paddingRight: scale(8),
   },
   overline: {
-    letterSpacing: 1,
-    marginBottom: 2,
+    letterSpacing: 0.8,
+    fontSize: scaleFont(9.5),
+    fontWeight: '700',
   },
   title: {
     letterSpacing: -0.3,
+    marginTop: verticalScale(2),
   },
   tierGemHeader: {
     flexDirection: 'row',
@@ -256,8 +303,8 @@ const styles = StyleSheet.create({
     marginBottom: verticalScale(14),
   },
   scoreArcWrap: {
-    width: scale(110),
-    height: scale(110),
+    width: scale(104),
+    height: scale(104),
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -267,33 +314,38 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   scoreNumber: {
+    fontSize: scaleFont(22),
     fontWeight: '700',
-    lineHeight: scale(28),
   },
   scoreMax: {
-    fontSize: scale(10),
+    fontSize: scaleFont(10),
+    marginTop: -2,
   },
   scoreSummary: {
     flex: 1,
-    marginLeft: scale(16),
+    marginLeft: scale(14),
   },
   tierDesc: {
-    marginTop: 4,
-    lineHeight: scale(16),
+    marginTop: verticalScale(2),
+    lineHeight: scaleFont(15),
+  },
+  rankPill: {
+    marginTop: verticalScale(6),
   },
   rankText: {
-    marginTop: 6,
-    fontWeight: '600',
+    fontSize: scaleFont(11.5),
+    fontFamily: fontFamilies.primaryBold,
+    fontWeight: '700',
   },
   divider: {
-    height: 1,
-    marginVertical: verticalScale(10),
+    height: StyleSheet.hairlineWidth,
+    marginVertical: verticalScale(12),
   },
   driversHeading: {
     marginBottom: verticalScale(10),
   },
   driversList: {
-    gap: verticalScale(10),
+    gap: verticalScale(12),
   },
   driverItem: {
     width: '100%',
@@ -301,29 +353,43 @@ const styles = StyleSheet.create({
   driverTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: verticalScale(6),
   },
   driverMeta: {
     flex: 1,
-    marginRight: scale(8),
+    marginRight: scale(10),
   },
   driverTitleRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  driverTitleText: {
+    flex: 1,
+    fontSize: scaleFont(13),
+    fontWeight: '600',
+    marginRight: scale(6),
   },
   driverPointsWrap: {
     flexDirection: 'row',
     alignItems: 'baseline',
+    flexShrink: 0,
+  },
+  driverScoreValue: {
+    fontSize: scaleFont(13),
+    fontWeight: '600',
+  },
+  driverScoreMax: {
+    fontSize: scaleFont(10.5),
   },
   progressBarBg: {
-    height: 5,
-    borderRadius: 3,
+    height: verticalScale(5),
+    borderRadius: scale(3),
     overflow: 'hidden',
   },
   progressBarFill: {
     height: '100%',
-    borderRadius: 3,
+    borderRadius: scale(3),
   },
 });
 

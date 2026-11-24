@@ -7,114 +7,30 @@ import {
   Dimensions,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import Svg, { Rect } from 'react-native-svg';
+import Svg, { Rect, Defs, RadialGradient, Stop } from 'react-native-svg';
 import { useTheme } from '../../theme/index.js';
 import { scale, verticalScale, scaleFont } from '../../theme/responsive.js';
 import { fontFamilies } from '../../theme/typography.js';
+import { AppModal, AppText, AppBadge, MetricIconDisc } from '../core/index.js';
+import { TierGemIcon, CloseIcon } from '../../assets/vectors/index.js';
 import {
-  AppModal,
-  AppText,
-  FieldIconBadge,
-} from '../core/index.js';
-import { TierGemIcon } from '../../assets/vectors/ImpactIcons.jsx';
-import { CloseIcon } from '../../assets/vectors/AuthIcons.jsx';
+  PHARMACY_TIER_KEYS,
+  PHARMACY_TIERS_CONFIG,
+  getPharmacyTierTheme,
+  normalizePharmacyTier,
+} from '../../theme/tierThemes.js';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-/**
- * All Tier Milestones Definition for OneRetail Pharmacy Impact Index (PII)
- */
-const TIERS_META = [
-  {
-    id: 'general_trade',
-    name: 'General Trade',
-    range: '0 – 249',
-    min: 0,
-    max: 249,
-    nextTier: 'Established',
-  },
-  {
-    id: 'established',
-    name: 'Established',
-    range: '250 – 499',
-    min: 250,
-    max: 499,
-    nextTier: 'Key Account',
-  },
-  {
-    id: 'key_account',
-    name: 'Key Account',
-    range: '500 – 749',
-    min: 500,
-    max: 749,
-    nextTier: 'Flagship',
-  },
-  {
-    id: 'flagship',
-    name: 'Flagship',
-    range: '750+',
-    min: 750,
-    max: 1000,
-    nextTier: 'Pinnacle',
-  },
+const TIERS_ROADMAP_KEYS = [
+  PHARMACY_TIER_KEYS.GENERAL_TRADE,
+  PHARMACY_TIER_KEYS.ESTABLISHED,
+  PHARMACY_TIER_KEYS.KEY_ACCOUNT,
+  PHARMACY_TIER_KEYS.FLAGSHIP,
 ];
 
 /**
- * Dynamic Hero Card Gradients
- */
-const TIER_CARD_GRADIENTS = {
-  general_trade: {
-    light: ['#9AE1D5', '#B8EDE5', '#D2F5F0'],
-    dark: ['#172E29', '#12221E', '#0E1A17'],
-  },
-  emerging: {
-    light: ['#9AE1D5', '#B8EDE5', '#D2F5F0'],
-    dark: ['#172E29', '#12221E', '#0E1A17'],
-  },
-  established: {
-    light: ['#FDAE78', '#FDC197', '#FED7BD'],
-    dark: ['#281C14', '#201610', '#1A120D'],
-  },
-  key_account: {
-    light: ['#9CCAE1', '#BEE0F2', '#D8ECF7'],
-    dark: ['#162330', '#111B24', '#0E151C'],
-  },
-  senior: {
-    light: ['#9CCAE1', '#BEE0F2', '#D8ECF7'],
-    dark: ['#162330', '#111B24', '#0E151C'],
-  },
-  flagship: {
-    light: ['#D9B3F5', '#EAD2FA', '#F5E6FE'],
-    dark: ['#241730', '#1C1225', '#160E1D'],
-  },
-  distinguished: {
-    light: ['#D9B3F5', '#EAD2FA', '#F5E6FE'],
-    dark: ['#241730', '#1C1225', '#160E1D'],
-  },
-};
-
-const TIER_PROGRESS_COLORS = {
-  general_trade: '#00C48C',
-  emerging: '#00C48C',
-  established: '#FF6A00',
-  key_account: '#0284C7',
-  senior: '#0284C7',
-  flagship: '#A855F7',
-  distinguished: '#A855F7',
-};
-
-const TIER_PROGRESS_GRADIENTS = {
-  general_trade: ['#80E3CE', '#00C48C'],
-  emerging: ['#80E3CE', '#00C48C'],
-  established: ['#FDA15F', '#FB6B03'],
-  key_account: ['#7AD3FA', '#0284C7'],
-  senior: ['#7AD3FA', '#0284C7'],
-  flagship: ['#D49BF6', '#A855F7'],
-  distinguished: ['#D49BF6', '#A855F7'],
-};
-
-/**
- * ProgressBarsIcon
+ * ProgressBarsIcon - Visual Tier Progress Indicator
  */
 const ProgressBarsIcon = ({
   width = 18,
@@ -132,55 +48,50 @@ const ProgressBarsIcon = ({
 /**
  * ImpactScoreModal
  *
- * Bottom sheet status modal breaking down the pharmacy's current
- * PII progression, point deficit to the next tier, and all tier bands.
+ * Exact OneRx bottom sheet roadmap modal (radii.sheet / 32px, 1.2px glass border,
+ * top radial glow) displaying the pharmacy's current PII score and all 4 pharmacy tiers.
  *
  * @param {Object} props
  * @param {boolean} props.visible
  * @param {Function} props.onClose
- * @param {'general_trade' | 'established' | 'key_account' | 'flagship'} [props.tier='established']
- * @param {number} [props.score=482]
+ * @param {string} [props.tier='key_account']
+ * @param {number} [props.score=842]
  * @param {Function} [props.onSelectTier]
  */
 export const ImpactScoreModal = ({
   visible,
   onClose,
-  tier = 'established',
-  score = 482,
+  tier = 'key_account',
+  score = 842,
   onSelectTier,
 }) => {
-  const { colors, isDark } = useTheme();
+  const { colors, isDark, radii } = useTheme();
 
-  const normTier = useMemo(() => {
-    const raw = String(tier || 'established').toLowerCase();
-    if (raw.includes('flag') || raw.includes('dist')) return 'flagship';
-    if (raw.includes('key') || raw.includes('sen')) return 'key_account';
-    if (raw.includes('gen') || raw.includes('emer')) return 'general_trade';
-    return 'established';
-  }, [tier]);
+  const currentTheme = useMemo(() => {
+    return getPharmacyTierTheme(tier, isDark);
+  }, [tier, isDark]);
 
-  const currentTierMeta = useMemo(() => {
-    return TIERS_META.find((t) => t.id === normTier) || TIERS_META[1];
-  }, [normTier]);
+  const {
+    key: normTier,
+    label: currentLabel,
+    minPoints,
+    maxPoints,
+    nextTierKey,
+    cardTint,
+    arcGradient,
+    accentColor,
+  } = currentTheme;
 
-  const targetTierScore = currentTierMeta.max + 1;
-  const pointsRemaining = Math.max(0, targetTierScore - score);
+  const nextTierConfig = nextTierKey ? PHARMACY_TIERS_CONFIG[nextTierKey] : null;
+  const targetPoints = maxPoints + 1;
+  const pointsRemaining = Math.max(0, targetPoints - score);
 
   const progressFraction = useMemo(() => {
-    const span = currentTierMeta.max - currentTierMeta.min;
+    const span = maxPoints - minPoints;
     if (span <= 0) return 1;
-    const currentInTier = score - currentTierMeta.min;
+    const currentInTier = score - minPoints;
     return Math.min(Math.max(currentInTier / span, 0.05), 1);
-  }, [currentTierMeta, score]);
-
-  const heroGrad =
-    (TIER_CARD_GRADIENTS[normTier] || TIER_CARD_GRADIENTS.established)[
-      isDark ? 'dark' : 'light'
-    ];
-  const progressGrad =
-    (TIER_PROGRESS_GRADIENTS[normTier] || TIER_PROGRESS_GRADIENTS.established);
-  const solidProgressColor =
-    TIER_PROGRESS_COLORS[normTier] || '#FF6A00';
+  }, [maxPoints, minPoints, score]);
 
   return (
     <AppModal
@@ -190,21 +101,55 @@ export const ImpactScoreModal = ({
       style={[
         styles.modalContainer,
         {
-          backgroundColor: isDark ? '#141416' : '#FFFFFF',
-          borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
+          backgroundColor: isDark ? '#0A0A0E' : '#FFFFFF',
+          borderTopLeftRadius: radii?.sheet || scale(32),
+          borderTopRightRadius: radii?.sheet || scale(32),
+          borderTopWidth: 1.2,
+          borderLeftWidth: 1.2,
+          borderRightWidth: 1.2,
+          borderTopColor: isDark
+            ? 'rgba(255, 255, 255, 0.22)'
+            : 'rgba(0, 155, 169, 0.35)',
+          borderLeftColor: isDark
+            ? 'rgba(255, 255, 255, 0.08)'
+            : 'rgba(0, 0, 0, 0.06)',
+          borderRightColor: isDark
+            ? 'rgba(255, 255, 255, 0.08)'
+            : 'rgba(0, 0, 0, 0.06)',
         },
       ]}
     >
+      {/* Top Radial Glow */}
+      <View style={styles.topGlowContainer} pointerEvents="none">
+        <Svg width="100%" height={verticalScale(120)} viewBox="0 0 360 120">
+          <Defs>
+            <RadialGradient id="scoreModalTopGlow" cx="50%" cy="0%" rx="55%" ry="100%">
+              <Stop
+                offset="0%"
+                stopColor={accentColor}
+                stopOpacity={isDark ? 0.38 : 0.25}
+              />
+              <Stop
+                offset="100%"
+                stopColor={accentColor}
+                stopOpacity={0}
+              />
+            </RadialGradient>
+          </Defs>
+          <Rect x="0" y="0" width="360" height="120" fill="url(#scoreModalTopGlow)" />
+        </Svg>
+      </View>
+
       {/* 1. Header Row */}
       <View style={styles.headerRow}>
-        <AppText
-          style={[
-            styles.title,
-            { color: colors.text.primary },
-          ]}
-        >
-          Pharmacy Impact Index (PII)
-        </AppText>
+        <View style={styles.headerTitleWrap}>
+          <AppText style={[styles.title, { color: colors.text.primary }]}>
+            Pharmacy Impact Index (PII)
+          </AppText>
+          <AppText style={[styles.subtitle, { color: isDark ? '#94A3B8' : '#64748B' }]}>
+            Performance tiers and verified dispensing score
+          </AppText>
+        </View>
 
         <TouchableOpacity
           onPress={onClose}
@@ -218,23 +163,28 @@ export const ImpactScoreModal = ({
                 : 'rgba(0, 0, 0, 0.05)',
             },
           ]}
+          accessibilityRole="button"
+          accessibilityLabel="Close PII Tier Roadmap"
         >
-          <CloseIcon size={scale(16)} color={colors.text.primary} />
+          <CloseIcon size={scale(15)} color={colors.text.primary} />
         </TouchableOpacity>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollContent}>
-        {/* 2. Dynamic Hero Card for Current Tier */}
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* 2. Current Tier Dynamic Hero Card */}
         <LinearGradient
-          colors={heroGrad}
+          colors={cardTint}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={[
             styles.heroCard,
             {
               borderColor: isDark
-                ? 'rgba(255, 255, 255, 0.12)'
-                : 'rgba(255, 255, 255, 0.65)',
+                ? 'rgba(255, 255, 255, 0.16)'
+                : 'rgba(255, 255, 255, 0.75)',
             },
           ]}
         >
@@ -246,7 +196,7 @@ export const ImpactScoreModal = ({
                   { color: isDark ? '#FFFFFF' : '#020202' },
                 ]}
               >
-                {`${currentTierMeta.name} Pharmacy`}
+                {`${currentLabel} Pharmacy`}
               </AppText>
               <AppText
                 style={[
@@ -254,14 +204,16 @@ export const ImpactScoreModal = ({
                   { color: isDark ? '#94A3B8' : '#475569' },
                 ]}
               >
-                {pointsRemaining > 0
-                  ? `${pointsRemaining} pts to unlock ${currentTierMeta.nextTier}`
-                  : 'Highest PII Tier Achieved!'}
+                {pointsRemaining > 0 && nextTierConfig
+                  ? `${pointsRemaining} pts to unlock ${nextTierConfig.label}`
+                  : 'Pinnacle Tier Achieved! Top 1% in Territory'}
               </AppText>
             </View>
 
             <View style={styles.heroRightGem}>
-              <TierGemIcon tier={normTier} size={scale(48)} isApex />
+              <MetricIconDisc size={52} isDark={isDark} variant={normTier}>
+                <TierGemIcon tier={normTier} size={scale(28)} isApex={true} />
+              </MetricIconDisc>
             </View>
           </View>
 
@@ -277,7 +229,7 @@ export const ImpactScoreModal = ({
             ]}
           >
             <LinearGradient
-              colors={progressGrad}
+              colors={arcGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={[
@@ -285,6 +237,15 @@ export const ImpactScoreModal = ({
                 { width: `${Math.round(progressFraction * 100)}%` },
               ]}
             />
+          </View>
+
+          <View style={styles.progressMetaRow}>
+            <AppText style={[styles.progressScoreText, { color: accentColor }]}>
+              {`${score} / ${maxPoints >= 1500 ? '1500' : maxPoints} pts`}
+            </AppText>
+            <AppText style={[styles.progressPctText, { color: isDark ? '#94A3B8' : '#64748B' }]}>
+              {`${Math.round(progressFraction * 100)}% completed`}
+            </AppText>
           </View>
         </LinearGradient>
 
@@ -296,42 +257,44 @@ export const ImpactScoreModal = ({
             primaryColor={isDark ? '#FFFFFF' : '#020202'}
             accentColor={isDark ? '#64748B' : '#94A3B8'}
           />
-          <AppText
-            style={[
-              styles.sectionTitleText,
-              { color: colors.text.primary },
-            ]}
-          >
+          <AppText style={[styles.sectionTitleText, { color: colors.text.primary }]}>
             All Pharmacy Tiers
           </AppText>
         </View>
 
         {/* 4. Tier Milestone Cards */}
         <View style={styles.tiersList}>
-          {TIERS_META.map((t) => {
-            const isCurrent = t.id === normTier;
+          {TIERS_ROADMAP_KEYS.map((k) => {
+            const itemTheme = getPharmacyTierTheme(k, isDark);
+            const isCurrent = k === normTier;
 
             return (
               <TouchableOpacity
-                key={t.id}
+                key={k}
                 activeOpacity={0.85}
-                onPress={() => onSelectTier && onSelectTier(t.id)}
+                onPress={() => onSelectTier && onSelectTier(k)}
                 style={[
                   styles.tierRowCard,
                   {
-                    backgroundColor: isDark ? '#1C1C20' : '#F8FAFC',
+                    backgroundColor: isDark ? '#141418' : '#F8FAFC',
                     borderColor: isCurrent
-                      ? solidProgressColor
-                      : (isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)'),
+                      ? accentColor
+                      : (isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)'),
                     borderWidth: isCurrent ? 1.5 : 1,
                   },
                 ]}
               >
                 <View style={styles.tierRowLeft}>
-                  <View style={styles.gemDisc}>
-                    <TierGemIcon tier={t.id} size={scale(28)} />
-                  </View>
-                  <View>
+                  <MetricIconDisc
+                    size={42}
+                    isDark={isDark}
+                    variant={k}
+                    style={styles.tierGemDisc}
+                  >
+                    <TierGemIcon tier={k} size={scale(22)} isApex={true} />
+                  </MetricIconDisc>
+
+                  <View style={styles.tierTextCol}>
                     <View style={styles.nameRow}>
                       <AppText
                         style={[
@@ -339,13 +302,13 @@ export const ImpactScoreModal = ({
                           { color: colors.text.primary },
                         ]}
                       >
-                        {t.name}
+                        {itemTheme.label}
                       </AppText>
                       {isCurrent && (
                         <View
                           style={[
                             styles.currentBadge,
-                            { backgroundColor: solidProgressColor },
+                            { backgroundColor: accentColor },
                           ]}
                         >
                           <AppText style={styles.currentBadgeText}>
@@ -360,12 +323,12 @@ export const ImpactScoreModal = ({
                         { color: isDark ? '#94A3B8' : '#64748B' },
                       ]}
                     >
-                      {`${t.range} PII points`}
+                      {`${itemTheme.minPoints} – ${itemTheme.maxPoints >= 1500 ? '1500+' : itemTheme.maxPoints} pts`}
                     </AppText>
                   </View>
                 </View>
 
-                {isCurrent && (
+                {isCurrent ? (
                   <View
                     style={[
                       styles.scoreBubble,
@@ -373,18 +336,24 @@ export const ImpactScoreModal = ({
                         backgroundColor: isDark
                           ? 'rgba(255, 255, 255, 0.08)'
                           : 'rgba(0, 0, 0, 0.05)',
+                        borderColor: accentColor,
+                        borderWidth: 1,
                       },
                     ]}
                   >
                     <AppText
                       style={[
                         styles.scoreBubbleText,
-                        { color: solidProgressColor },
+                        { color: accentColor },
                       ]}
                     >
                       {`${score} pts`}
                     </AppText>
                   </View>
+                ) : (
+                  <AppText style={{ color: itemTheme.accentColor, fontSize: scaleFont(12), fontFamily: fontFamilies.primaryMedium }}>
+                    Preview &gt;
+                  </AppText>
                 )}
               </TouchableOpacity>
             );
@@ -399,18 +368,36 @@ const styles = StyleSheet.create({
   modalContainer: {
     paddingHorizontal: scale(20),
     paddingBottom: verticalScale(28),
-    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  topGlowContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: verticalScale(120),
   },
   headerRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
     marginBottom: verticalScale(16),
+    marginTop: verticalScale(4),
+  },
+  headerTitleWrap: {
+    flex: 1,
+    paddingRight: scale(12),
   },
   title: {
     fontSize: scaleFont(18),
-    fontFamily: fontFamilies.primaryBold,
+    fontFamilies: fontFamilies.primaryBold,
     fontWeight: '700',
+    letterSpacing: -0.3,
+  },
+  subtitle: {
+    fontSize: scaleFont(12.5),
+    fontFamily: fontFamilies.primaryRegular,
+    marginTop: verticalScale(2),
   },
   closeBtn: {
     width: scale(32),
@@ -420,7 +407,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   scrollContent: {
-    maxHeight: verticalScale(500),
+    paddingBottom: verticalScale(16),
   },
   heroCard: {
     borderRadius: scale(22),
@@ -459,6 +446,21 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: scale(4),
   },
+  progressMetaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: verticalScale(8),
+  },
+  progressScoreText: {
+    fontSize: scaleFont(12),
+    fontFamily: fontFamilies.monoMedium || fontFamilies.primaryBold,
+    fontWeight: '600',
+  },
+  progressPctText: {
+    fontSize: scaleFont(11.5),
+    fontFamily: fontFamilies.primaryRegular,
+  },
   sectionTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -472,62 +474,61 @@ const styles = StyleSheet.create({
   },
   tiersList: {
     gap: verticalScale(10),
-    paddingBottom: verticalScale(12),
   },
   tierRowCard: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: scale(16),
+    paddingHorizontal: scale(14),
     paddingVertical: verticalScale(12),
     borderRadius: scale(18),
   },
   tierRowLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
+    marginRight: scale(8),
   },
-  gemDisc: {
-    width: scale(40),
-    height: scale(40),
-    borderRadius: scale(20),
-    alignItems: 'center',
-    justifyContent: 'center',
+  tierGemDisc: {
     marginRight: scale(12),
+  },
+  tierTextCol: {
+    flex: 1,
   },
   nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   tierRowName: {
-    fontSize: scaleFont(15),
+    fontSize: scaleFont(14.5),
     fontFamily: fontFamilies.primaryBold,
     fontWeight: '700',
   },
   currentBadge: {
-    paddingHorizontal: scale(8),
+    paddingHorizontal: scale(7),
     paddingVertical: verticalScale(2),
-    borderRadius: scale(8),
+    borderRadius: scale(6),
     marginLeft: scale(8),
   },
   currentBadgeText: {
     color: '#FFFFFF',
-    fontSize: scaleFont(10),
+    fontSize: scaleFont(9.5),
     fontFamily: fontFamilies.primaryBold,
     fontWeight: '700',
   },
   tierRowRange: {
-    fontSize: scaleFont(12.5),
-    fontFamily: fontFamilies.primaryRegular,
-    marginTop: verticalScale(2),
+    fontSize: scaleFont(12),
+    fontFamily: fontFamilies.monoRegular || fontFamilies.primaryRegular,
+    marginTop: verticalScale(3),
   },
   scoreBubble: {
-    paddingHorizontal: scale(12),
+    paddingHorizontal: scale(10),
     paddingVertical: verticalScale(4),
-    borderRadius: scale(12),
+    borderRadius: scale(10),
   },
   scoreBubbleText: {
-    fontSize: scaleFont(13),
-    fontFamily: fontFamilies.mono || fontFamilies.primaryBold,
+    fontSize: scaleFont(12.5),
+    fontFamily: fontFamilies.monoMedium || fontFamilies.primaryBold,
     fontWeight: '700',
   },
 });

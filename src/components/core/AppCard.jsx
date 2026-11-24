@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { useTheme } from '../../theme/index.js';
+import { scale } from '../../theme/responsive.js';
 
 /**
  * AppCard - Reusable Content Card Atom
@@ -10,6 +11,7 @@ import { useTheme } from '../../theme/index.js';
  * @param {React.ReactNode} props.children
  * @param {boolean} [props.elevated=false]
  * @param {boolean} [props.clickable=false]
+ * @param {boolean} [props.noPadding=false]
  * @param {Function} [props.onPress]
  * @param {Object} [props.style]
  */
@@ -17,21 +19,24 @@ export const AppCard = ({
   children,
   elevated = false,
   clickable = false,
+  noPadding = false,
   onPress,
   style,
   ...rest
 }) => {
-  const { colors, radii, spacing, shadows } = useTheme();
+  const { colors, radii, spacing, shadows, isDark } = useTheme();
 
   const cardStyles = [
     styles.card,
     {
-      backgroundColor: elevated ? colors.surface?.cardElevated || colors.surface?.card : colors.surface?.card,
-      borderColor: colors.border?.card || (colors.isDark ? 'rgba(255, 255, 255, 0.12)' : '#E4E4E7'),
+      backgroundColor: isDark
+        ? (elevated ? colors.surface?.cardElevated || colors.surface?.card : colors.surface?.card)
+        : (colors.surface?.card || '#FFFFFF'),
+      borderColor: colors.border?.card || (isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.06)'),
       borderRadius: radii.card, // 24px
-      padding: spacing.cardPadding,
+      padding: noPadding ? 0 : (spacing?.cardPadding || scale(14)),
     },
-    elevated ? shadows.card : shadows.subtle,
+    !isDark ? styles.lightShadow : (elevated ? shadows.card : shadows.subtle),
     style,
   ];
 
@@ -62,6 +67,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     overflow: 'hidden',
     marginVertical: 6,
+  },
+  lightShadow: {
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
 });
 

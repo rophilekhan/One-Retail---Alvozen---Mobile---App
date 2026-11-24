@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { View, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Path } from 'react-native-svg';
 import {
   AppScreenContainer,
   AppText,
@@ -7,299 +9,630 @@ import {
   AppBadge,
   AppButton,
   AppToast,
+  FilterPillsBar,
+  AppSearchBar,
+  GlassCard,
+  MetricIconDisc,
 } from '../../components/core/index.js';
+import { DocumentCopyIcon, ClockIcon } from '../../assets/vectors/index.js';
 import { useTheme } from '../../theme/index.js';
-import { scale, verticalScale } from '../../theme/responsive.js';
-import { PermissionGuard } from '../../components/common/PermissionGuard.jsx';
+import { scale, verticalScale, moderateScale, scaleFont } from '../../theme/responsive.js';
+import { fontFamilies, typography } from '../../theme/typography.js';
+import { radii } from '../../theme/radii.js';
 import { PERMISSIONS, hasPermission } from '../../store/useStaffStore.js';
+import { useDistributorStore } from '../../store/useDistributorStore.js';
 import {
+  DistributorCard,
   PurchaseOrderCard,
-  ExpiryReturnCard,
-  CreatePoModal,
-  LogExpiryModal,
-} from '../../components/ecosystem/index.js';
+  ExpiryClaimCard,
+  CreatePOModal,
+  CreateExpiryClaimModal,
+} from '../../components/distributor/index.js';
 
-const INITIAL_PURCHASE_ORDERS = [
-  {
-    id: 'po_101',
-    poNumber: 'PO-2026-0041',
-    distributor: 'Muller & Phipps Pakistan',
-    itemsCount: 3,
-    totalAmount: 18400,
-    status: 'Pending Approval', // 'Draft' | 'Pending Approval' | 'Dispatched'
-    createdAt: '2026-11-19',
-    canApprove: true,
-  },
-  {
-    id: 'po_102',
-    poNumber: 'PO-2026-0038',
-    distributor: 'Ali Gohar & Co',
-    itemsCount: 5,
-    totalAmount: 32600,
-    status: 'Dispatched',
-    createdAt: '2026-11-17',
-    canApprove: false,
-  },
-];
-
-const INITIAL_EXPIRY_BATCHES = [
-  {
-    id: 'exp_1',
-    brandName: 'Risek 20mg Cap 14s',
-    batchNo: 'B-88214',
-    expiryDate: 'Dec 2026',
-    units: 24,
-    claimValue: 3240,
-    status: 'Ready for Return Authorization', // 'Audited' | 'Ready for Return Authorization' | 'Credit Issued'
-  },
-  {
-    id: 'exp_2',
-    brandName: 'Klavox 625mg Tab 10s',
-    batchNo: 'KL-44102',
-    expiryDate: 'Jan 2027',
-    units: 12,
-    claimValue: 2580,
-    status: 'Credit Note Issued',
-  },
-];
+const TABS = ['Distributors', 'Purchase Orders', 'Expiry Claims'];
 
 /**
- * DistributorConnectScreen - Ordering & Expiry Workflow
- * Mandated by ONERETAIL_PRD.md:
- * - PO Initiator & Approver RBAC workflow
- * - Expiry Initiator & Approver return batches & credit notes
+ * EmptyBoxIcon - Box SVG Icon for Zero-Item State
+ */
+const EmptyBoxIcon = ({ color, size = 32 }) => (
+  <Svg width={scale(size)} height={scale(size)} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+      stroke={color}
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+/**
+ * DistributorConnectScreen - Interactive Pharma Distributor Ordering & Expiry Workflow
+ *
+ * Implements strict OneRx architecture:
+ * - Wrap in <AppScreenContainer scrollable={false} withBottomNavClearance={true}>
+ * - Top KPI Summary Strip with 2 side-by-side stat cards (Pending POs & Pending Expiry Claims)
+ * - Search Bar & Fixed-Height Filter Tabs (Distributors | Purchase Orders | Expiry Claims)
+ * - Single clean FlatList (zero nested ScrollViews)
+ * - Functional CreatePOModal & CreateExpiryClaimModal with left-side back button
+ * - Direct linkage with TradeSchemesScreen bookedScheme navigation payload
  *
  * @param {Object} props
  * @param {Object} props.navigation
+ * @param {Object} [props.route]
  */
-export const DistributorConnectScreen = ({ navigation }) => {
-  const { colors } = useTheme();
-  const [activeTab, setActiveTab] = useState('PO'); // 'PO' | 'EXPIRY'
-  const [orders, setOrders] = useState(INITIAL_PURCHASE_ORDERS);
-  const [expiries, setExpiries] = useState(INITIAL_EXPIRY_BATCHES);
+export const DistributorConnectScreen = ({ navigation, route }) => {
+  const { colors, isDark, spacing, shadows } = useTheme();
+  const insets = useSafeAreaInsets();
 
-  // Modals
+  const {
+    distributors,
+    purchaseOrders,
+    expiryClaims,
+    approvePurchaseOrder,
+    approveExpiryClaim,
+  } = useDistributorStore();
+
+  const [activeTab, setActiveTab] = useState('Distributors');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Modals state
   const [createPoVisible, setCreatePoVisible] = useState(false);
   const [createExpiryVisible, setCreateExpiryVisible] = useState(false);
+  const [selectedDistributor, setSelectedDistributor] = useState(null);
+  const [selectedScheme, setSelectedScheme] = useState(null);
 
-  const handleApprovePo = (poId) => {
-    if (!hasPermission(PERMISSIONS.PO_APPROVER)) {
-      AppToast.show({
-        title: 'Permission Denied',
-        message: 'Only authorized PO Approvers can sign and submit orders.',
-        type: 'warning',
+  // Auto-handle bookedScheme payload passed from TradeSchemesScreen
+  useEffect(() => {
+    const scheme = route?.params?.bookedScheme;
+    if (scheme) {
+      setSelectedScheme(scheme);
+      const matched = distributors.find(
+        (d) =>
+          d.name.toLowerCase().includes(scheme.distributor.toLowerCase()) ||
+          scheme.distributor.toLowerCase().includes(d.shortName?.toLowerCase() || '')
+      );
+      setSelectedDistributor(matched || distributors[0]);
+      setActiveTab('Distributors');
+      setCreatePoVisible(true);
+    }
+  }, [route?.params?.bookedScheme, distributors]);
+
+  // KPI Calculations
+  const pendingPOCount = useMemo(() => {
+    return purchaseOrders.filter((p) => p.status === 'PENDING_APPROVAL' || p.status === 'Pending Approval').length;
+  }, [purchaseOrders]);
+
+  const pendingExpiryCount = useMemo(() => {
+    return expiryClaims.filter((c) => c.status === 'PENDING_APPROVAL' || c.status === 'Ready for Return Authorization').length;
+  }, [expiryClaims]);
+
+  // Handlers for initiating modals
+  const handleInitiatePO = useCallback((distributor) => {
+    setSelectedDistributor(distributor);
+    setSelectedScheme(null);
+    setCreatePoVisible(true);
+  }, []);
+
+  const handleExpiryClaim = useCallback((distributor) => {
+    setSelectedDistributor(distributor);
+    setCreateExpiryVisible(true);
+  }, []);
+
+  // Handlers for approvals with RBAC permission check
+  const handleApprovePo = useCallback(
+    (poId) => {
+      if (!hasPermission(PERMISSIONS.PO_APPROVER)) {
+        AppToast.show({
+          title: 'Permission Denied',
+          message: 'Only authorized PO Approvers can sign and submit orders.',
+          type: 'warning',
+        });
+        return;
+      }
+      approvePurchaseOrder(poId);
+    },
+    [approvePurchaseOrder]
+  );
+
+  const handleApproveExpiry = useCallback(
+    (claimId) => {
+      if (!hasPermission(PERMISSIONS.EXPIRY_APPROVER)) {
+        AppToast.show({
+          title: 'Permission Denied',
+          message: 'Only authorized Expiry Approvers can approve credit note claims.',
+          type: 'warning',
+        });
+        return;
+      }
+      approveExpiryClaim(claimId);
+    },
+    [approveExpiryClaim]
+  );
+
+  // Filtered dataset according to active tab and search query
+  const filteredData = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+
+    if (activeTab === 'Distributors') {
+      return distributors.filter((item) => {
+        if (!q) return true;
+        return (
+          item.name.toLowerCase().includes(q) ||
+          item.territory.toLowerCase().includes(q) ||
+          item.contactPerson.toLowerCase().includes(q)
+        );
       });
-      return;
     }
 
-    setOrders((prev) =>
-      prev.map((o) => (o.id === poId ? { ...o, status: 'Submitted to Distributor' } : o))
-    );
-    AppToast.show({
-      title: 'PO Authorized & Transmitted',
-      message: 'Purchase order signed and sent directly to distributor portal.',
-      type: 'success',
-    });
-  };
-
-  const handleCreatePo = ({ distributor, totalAmount }) => {
-    if (!hasPermission(PERMISSIONS.PO_INITIATOR)) {
-      AppToast.show({
-        title: 'Permission Denied',
-        message: 'Only authorized PO Initiators can draft purchase orders.',
-        type: 'warning',
+    if (activeTab === 'Purchase Orders') {
+      return purchaseOrders.filter((item) => {
+        if (!q) return true;
+        return (
+          item.poNumber.toLowerCase().includes(q) ||
+          item.distributorName.toLowerCase().includes(q) ||
+          item.status.toLowerCase().includes(q)
+        );
       });
-      return;
     }
 
-    const newPO = {
-      id: 'po_' + Date.now(),
-      poNumber: 'PO-2026-00' + (orders.length + 42),
-      distributor,
-      itemsCount: 4,
-      totalAmount,
-      status: 'Pending Approval',
-      createdAt: new Date().toLocaleDateString('en-GB'),
-      canApprove: true,
-    };
-
-    setOrders([newPO, ...orders]);
-    setCreatePoVisible(false);
-    AppToast.show({
-      title: 'Purchase Order Drafted',
-      message: `${newPO.poNumber} created. Awaiting PO Approver review.`,
-      type: 'success',
-    });
-  };
-
-  const handleAuthorizeExpiry = (expId) => {
-    if (!hasPermission(PERMISSIONS.EXPIRY_APPROVER)) {
-      AppToast.show({
-        title: 'Permission Denied',
-        message: 'Only authorized Expiry Approvers can approve credit note claims.',
-        type: 'warning',
+    if (activeTab === 'Expiry Claims') {
+      return expiryClaims.filter((item) => {
+        if (!q) return true;
+        return (
+          item.claimNumber.toLowerCase().includes(q) ||
+          item.skuName.toLowerCase().includes(q) ||
+          item.batchNo.toLowerCase().includes(q) ||
+          item.distributorName.toLowerCase().includes(q) ||
+          item.status.toLowerCase().includes(q)
+        );
       });
-      return;
     }
 
-    setExpiries((prev) =>
-      prev.map((e) => (e.id === expId ? { ...e, status: 'Credit Note Authorized' } : e))
-    );
-    AppToast.show({
-      title: 'Expiry Credit Authorized',
-      message: 'Distributor return manifest authorized. Credit note issued.',
-      type: 'success',
-    });
-  };
+    return [];
+  }, [activeTab, searchQuery, distributors, purchaseOrders, expiryClaims]);
 
-  const handleCreateExpiry = ({ brandName, batchNo, units }) => {
-    if (!hasPermission(PERMISSIONS.EXPIRY_INITIATOR)) {
-      AppToast.show({
-        title: 'Permission Denied',
-        message: 'Only authorized Expiry Initiators can log near-expiry items.',
-        type: 'warning',
-      });
-      return;
-    }
+  // Key extractor
+  const keyExtractor = useCallback((item) => item.id, []);
 
-    const newExp = {
-      id: 'exp_' + Date.now(),
-      brandName,
-      batchNo,
-      expiryDate: 'Dec 2026',
-      units,
-      claimValue: units * 180,
-      status: 'Ready for Return Authorization',
-    };
+  // Render Item Callback
+  const renderItem = useCallback(
+    ({ item }) => {
+      if (activeTab === 'Distributors') {
+        return (
+          <DistributorCard
+            distributor={item}
+            onInitiatePO={handleInitiatePO}
+            onExpiryClaim={handleExpiryClaim}
+          />
+        );
+      }
 
-    setExpiries([newExp, ...expiries]);
-    setCreateExpiryVisible(false);
-    AppToast.show({
-      title: 'Expiry Batch Logged',
-      message: `${newExp.brandName} flagged. Awaiting Expiry Approver authorization.`,
-      type: 'success',
-    });
-  };
+      if (activeTab === 'Purchase Orders') {
+        return (
+          <PurchaseOrderCard
+            po={item}
+            onApprove={handleApprovePo}
+          />
+        );
+      }
+
+      if (activeTab === 'Expiry Claims') {
+        return (
+          <ExpiryClaimCard
+            claim={item}
+            onApprove={handleApproveExpiry}
+          />
+        );
+      }
+
+      return null;
+    },
+    [activeTab, handleInitiatePO, handleExpiryClaim, handleApprovePo, handleApproveExpiry]
+  );
+
+  // Empty State Component
+  const renderEmptyComponent = useMemo(
+    () => (
+      <GlassCard
+        style={[
+          styles.emptyCard,
+          {
+            padding: spacing?.cardPadding || scale(20),
+            borderRadius: radii?.card || scale(20),
+          },
+        ]}
+      >
+        <MetricIconDisc size={56} isDark={isDark} variant="neutral">
+          <EmptyBoxIcon
+            color={colors.text?.secondary || (isDark ? '#94A3B8' : '#64748B')}
+            size={28}
+          />
+        </MetricIconDisc>
+
+        <AppText
+          style={[
+            styles.emptyTitle,
+            typography?.titleMedium,
+            {
+              color: colors.text?.primary || (isDark ? '#FFFFFF' : '#020202'),
+              fontFamily: fontFamilies.primaryMedium || 'DMSans-Medium',
+            },
+          ]}
+        >
+          No Records Found
+        </AppText>
+
+        <AppText
+          style={[
+            styles.emptySubtitle,
+            typography?.bodySmall,
+            {
+              color: colors.text?.secondary || (isDark ? '#94A3B8' : '#64748B'),
+              fontFamily: fontFamilies.primaryRegular || 'DMSans-Regular',
+            },
+          ]}
+        >
+          {searchQuery
+            ? `No records match "${searchQuery}".`
+            : `No ${activeTab.toLowerCase()} available at this time.`}
+        </AppText>
+
+        {searchQuery ? (
+          <AppButton
+            variant="secondary"
+            size="sm"
+            title="Clear Search"
+            onPress={() => setSearchQuery('')}
+            style={styles.resetBtn}
+          />
+        ) : null}
+      </GlassCard>
+    ),
+    [colors, isDark, spacing, radii, typography, fontFamilies, searchQuery, activeTab]
+  );
 
   return (
-    <AppScreenContainer scrollable={true} withAmbientGlow={true} withBottomNavClearance={true}>
-      <AppHeader title="Distributor Connect" onBack={() => navigation.goBack()} showBack={true} />
+    <AppScreenContainer
+      scrollable={false}
+      withAmbientGlow={true}
+      withBottomNavClearance={false}
+      withHorizontalPadding={false}
+      contentContainerStyle={{ paddingBottom: 0 }}
+    >
+      {/* ── Fixed Header Area ────────────────────────────────────────── */}
+      <View style={[styles.headerContainer, { paddingHorizontal: spacing?.screenHorizontal || scale(20) }]}>
+        <AppHeader
+          title="Distributor Connect"
+          onBack={() => navigation.goBack()}
+          showBack={true}
+          rightElement={
+            <AppBadge
+              label={`${distributors.length} Distributors`}
+              variant="brand"
+              isMono={true}
+            />
+          }
+        />
+      </View>
 
-      {/* Tab Switcher */}
-      <View style={styles.tabBar}>
+      {/* ── Top KPI Summary Strip (2 Side-by-Side Stat Cards) ────────── */}
+      <View
+        style={[
+          styles.kpiContainer,
+          {
+            paddingHorizontal: spacing?.screenHorizontal || scale(20),
+            gap: spacing?.sm || scale(10),
+            marginBottom: verticalScale(12),
+          },
+        ]}
+      >
+        {/* KPI 1: Pending POs */}
         <TouchableOpacity
-          onPress={() => setActiveTab('PO')}
-          style={[styles.tabBtn, activeTab === 'PO' && { backgroundColor: colors.brand?.primary }]}
+          activeOpacity={0.7}
+          onPress={() => setActiveTab('Purchase Orders')}
+          style={styles.kpiTouchable}
+          accessibilityRole="button"
+          accessibilityLabel={`Pending POs: ${pendingPOCount}`}
         >
-          <AppText variant="bodyMediumMedium" colorType={activeTab === 'PO' ? 'inverse' : 'muted'}>
-            Purchase Orders (PO)
-          </AppText>
+          {isDark ? (
+            <GlassCard noPadding style={styles.kpiCard}>
+              <View style={styles.kpiTileContent}>
+                <View style={styles.kpiTopRow}>
+                  <MetricIconDisc size={34} variant="teal">
+                    <DocumentCopyIcon size={18} color="#FFFFFF" />
+                  </MetricIconDisc>
+                  <AppBadge label="Pending" variant="accent" size="sm" isMono={true} />
+                </View>
+                <AppText
+                  style={[
+                    styles.kpiCountText,
+                    {
+                      color: colors.brand?.primary || '#009BA9',
+                      fontFamily: fontFamilies.monoMedium || 'DMMono-Medium',
+                    },
+                  ]}
+                >
+                  {pendingPOCount}
+                </AppText>
+                <AppText
+                  numberOfLines={1}
+                  style={[
+                    styles.kpiTitleText,
+                    {
+                      color: colors.text?.secondary || '#94A3B8',
+                      fontFamily: fontFamilies.primaryMedium || 'DMSans-Medium',
+                    },
+                  ]}
+                >
+                  Pending POs
+                </AppText>
+              </View>
+            </GlassCard>
+          ) : (
+            <View
+              style={[
+                styles.kpiCard,
+                styles.kpiLightCard,
+                { borderColor: colors.border?.card || '#F0F0F0' },
+                shadows?.light?.card || shadows?.card,
+              ]}
+            >
+              <View style={styles.kpiTileContent}>
+                <View style={styles.kpiTopRow}>
+                  <MetricIconDisc size={34} variant="teal">
+                    <DocumentCopyIcon size={18} color={colors.brand?.primaryDark || '#0F4761'} />
+                  </MetricIconDisc>
+                  <AppBadge label="Pending" variant="accent" size="sm" isMono={true} />
+                </View>
+                <AppText
+                  style={[
+                    styles.kpiCountText,
+                    {
+                      color: colors.brand?.primary || '#009BA9',
+                      fontFamily: fontFamilies.monoMedium || 'DMMono-Medium',
+                    },
+                  ]}
+                >
+                  {pendingPOCount}
+                </AppText>
+                <AppText
+                  numberOfLines={1}
+                  style={[
+                    styles.kpiTitleText,
+                    {
+                      color: colors.text?.secondary || '#64748B',
+                      fontFamily: fontFamilies.primaryMedium || 'DMSans-Medium',
+                    },
+                  ]}
+                >
+                  Pending POs
+                </AppText>
+              </View>
+            </View>
+          )}
         </TouchableOpacity>
 
+        {/* KPI 2: Pending Expiry Claims */}
         <TouchableOpacity
-          onPress={() => setActiveTab('EXPIRY')}
-          style={[styles.tabBtn, activeTab === 'EXPIRY' && { backgroundColor: colors.brand?.primary }]}
+          activeOpacity={0.7}
+          onPress={() => setActiveTab('Expiry Claims')}
+          style={styles.kpiTouchable}
+          accessibilityRole="button"
+          accessibilityLabel={`Expiry Claims: ${pendingExpiryCount}`}
         >
-          <AppText variant="bodyMediumMedium" colorType={activeTab === 'EXPIRY' ? 'inverse' : 'muted'}>
-            Expiry & Returns
-          </AppText>
+          {isDark ? (
+            <GlassCard noPadding style={styles.kpiCard}>
+              <View style={styles.kpiTileContent}>
+                <View style={styles.kpiTopRow}>
+                  <MetricIconDisc size={34} variant="gold">
+                    <ClockIcon size={18} color="#FFFFFF" />
+                  </MetricIconDisc>
+                  <AppBadge label="Action Req" variant="brand" size="sm" isMono={true} />
+                </View>
+                <AppText
+                  style={[
+                    styles.kpiCountText,
+                    {
+                      color: colors.brand?.accent || '#FB6B03',
+                      fontFamily: fontFamilies.monoMedium || 'DMMono-Medium',
+                    },
+                  ]}
+                >
+                  {pendingExpiryCount}
+                </AppText>
+                <AppText
+                  numberOfLines={1}
+                  style={[
+                    styles.kpiTitleText,
+                    {
+                      color: colors.text?.secondary || '#94A3B8',
+                      fontFamily: fontFamilies.primaryMedium || 'DMSans-Medium',
+                    },
+                  ]}
+                >
+                  Pending Expiries
+                </AppText>
+              </View>
+            </GlassCard>
+          ) : (
+            <View
+              style={[
+                styles.kpiCard,
+                styles.kpiLightCard,
+                { borderColor: colors.border?.card || '#F0F0F0' },
+                shadows?.light?.card || shadows?.card,
+              ]}
+            >
+              <View style={styles.kpiTileContent}>
+                <View style={styles.kpiTopRow}>
+                  <MetricIconDisc size={34} variant="gold">
+                    <ClockIcon size={18} color={colors.brand?.primaryDark || '#0F4761'} />
+                  </MetricIconDisc>
+                  <AppBadge label="Action Req" variant="brand" size="sm" isMono={true} />
+                </View>
+                <AppText
+                  style={[
+                    styles.kpiCountText,
+                    {
+                      color: colors.brand?.accent || '#FB6B03',
+                      fontFamily: fontFamilies.monoMedium || 'DMMono-Medium',
+                    },
+                  ]}
+                >
+                  {pendingExpiryCount}
+                </AppText>
+                <AppText
+                  numberOfLines={1}
+                  style={[
+                    styles.kpiTitleText,
+                    {
+                      color: colors.text?.secondary || '#64748B',
+                      fontFamily: fontFamilies.primaryMedium || 'DMSans-Medium',
+                    },
+                  ]}
+                >
+                  Pending Expiries
+                </AppText>
+              </View>
+            </View>
+          )}
         </TouchableOpacity>
       </View>
 
-      {/* TAB 1: PURCHASE ORDERS */}
-      {activeTab === 'PO' && (
-        <View>
-          <View style={styles.sectionHeader}>
-            <View>
-              <AppText variant="titleMedium" colorType="primary">Distributor Orders</AppText>
-              <AppText variant="caption" colorType="muted">RBAC: PO Initiator drafts • PO Approver signs</AppText>
-            </View>
+      {/* ── Search Bar ──────────────────────────────────────────────── */}
+      <View style={[styles.searchContainer, { paddingHorizontal: spacing?.screenHorizontal || scale(20) }]}>
+        <AppSearchBar
+          placeholder="Search distributor, PO# or claim..."
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+      </View>
 
-            <PermissionGuard
-              permission={PERMISSIONS.PO_INITIATOR}
-              fallback={<AppBadge label="PO Read-Only" variant="muted" />}
-            >
-              <AppButton
-                variant="primary"
-                size="xs"
-                title="+ Draft PO"
-                onPress={() => setCreatePoVisible(true)}
-              />
-            </PermissionGuard>
-          </View>
-
-          {orders.map((po) => (
-            <PurchaseOrderCard key={po.id} po={po} onApprove={handleApprovePo} />
-          ))}
-        </View>
-      )}
-
-      {/* TAB 2: EXPIRY & RETURNS */}
-      {activeTab === 'EXPIRY' && (
-        <View>
-          <View style={styles.sectionHeader}>
-            <View>
-              <AppText variant="titleMedium" colorType="primary">Expiry Return Claims</AppText>
-              <AppText variant="caption" colorType="muted">RBAC: Expiry Initiator flags • Approver issues credit</AppText>
-            </View>
-
-            <PermissionGuard
-              permission={PERMISSIONS.EXPIRY_INITIATOR}
-              fallback={<AppBadge label="Expiry Read-Only" variant="muted" />}
-            >
-              <AppButton
-                variant="primary"
-                size="xs"
-                title="+ Log Expiry"
-                onPress={() => setCreateExpiryVisible(true)}
-              />
-            </PermissionGuard>
-          </View>
-
-          {expiries.map((exp) => (
-            <ExpiryReturnCard key={exp.id} expiry={exp} onAuthorize={handleAuthorizeExpiry} />
-          ))}
-        </View>
-      )}
-
-      <View style={{ height: verticalScale(20) }} />
-
-      {/* Draft PO Modal */}
-      <CreatePoModal
-        visible={createPoVisible}
-        onClose={() => setCreatePoVisible(false)}
-        onCreate={handleCreatePo}
+      {/* ── Fixed-Height Filter Tabs (Distributors | POs | Expiries) ─── */}
+      <FilterPillsBar
+        tabs={TABS}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        style={styles.tabBar}
       />
 
-      {/* Log Expiry Modal */}
-      <LogExpiryModal
+      {/* ── Single FlatList (Clean Zero-Clutter Architecture) ────────── */}
+      <FlatList
+        data={filteredData}
+        keyExtractor={keyExtractor}
+        renderItem={renderItem}
+        contentContainerStyle={[
+          styles.listContent,
+          {
+            paddingHorizontal: spacing?.screenHorizontal || scale(20),
+            paddingTop: spacing?.sm || verticalScale(8),
+            paddingBottom: Math.max(insets?.bottom ?? 0, verticalScale(16)) + verticalScale(12),
+            gap: spacing?.md || verticalScale(12),
+          },
+        ]}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        ListEmptyComponent={renderEmptyComponent}
+        style={styles.list}
+      />
+
+      {/* ── Draft & Submit PO Modal ──────────────────────────────────── */}
+      <CreatePOModal
+        visible={createPoVisible}
+        onClose={() => {
+          setCreatePoVisible(false);
+          setSelectedScheme(null);
+        }}
+        selectedDistributor={selectedDistributor}
+        initialScheme={selectedScheme}
+      />
+
+      {/* ── Log Near-Expiry Claim Modal ──────────────────────────────── */}
+      <CreateExpiryClaimModal
         visible={createExpiryVisible}
         onClose={() => setCreateExpiryVisible(false)}
-        onLog={handleCreateExpiry}
+        selectedDistributor={selectedDistributor}
       />
     </AppScreenContainer>
   );
 };
 
 const styles = StyleSheet.create({
-  tabBar: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: scale(12),
-    padding: scale(4),
-    marginVertical: verticalScale(8),
+  headerContainer: {
+    width: '100%',
   },
-  tabBtn: {
+  kpiContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+  },
+  kpiTouchable: {
     flex: 1,
-    paddingVertical: verticalScale(8),
-    alignItems: 'center',
-    borderRadius: scale(8),
   },
-  sectionHeader: {
+  kpiCard: {
+    width: '100%',
+    borderRadius: radii?.card || scale(18),
+  },
+  kpiLightCard: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+  },
+  kpiTileContent: {
+    padding: moderateScale(14),
+    flexDirection: 'column',
+  },
+  kpiTopRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginVertical: verticalScale(8),
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  kpiCountText: {
+    fontSize: scaleFont(24),
+    marginTop: verticalScale(10),
+    marginBottom: verticalScale(2),
+  },
+  kpiTitleText: {
+    fontSize: scaleFont(12),
+  },
+  searchContainer: {
+    width: '100%',
+    marginBottom: verticalScale(10),
+  },
+  tabBar: {
+    marginBottom: verticalScale(10),
+  },
+  list: {
+    flex: 1,
+    width: '100%',
+  },
+  listContent: {
+    flexGrow: 1,
+  },
+  emptyCard: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: verticalScale(32),
+    marginTop: verticalScale(20),
+  },
+  emptyTitle: {
+    fontSize: scaleFont(16),
+    marginTop: verticalScale(14),
+    textAlign: 'center',
+  },
+  emptySubtitle: {
+    fontSize: scaleFont(13),
+    marginTop: verticalScale(6),
+    textAlign: 'center',
+    lineHeight: scaleFont(18),
+    paddingHorizontal: scale(16),
+  },
+  resetBtn: {
+    minWidth: scale(130),
+    marginTop: verticalScale(16),
   },
 });
 

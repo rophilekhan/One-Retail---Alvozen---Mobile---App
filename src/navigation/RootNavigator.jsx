@@ -8,6 +8,7 @@ import AuthNavigator from './AuthNavigator.jsx';
 import MainTabNavigator from './MainTabNavigator.jsx';
 
 // Core Feature Screens
+import { HomeDashboardScreen, UploadClosingDataScreen } from '../screens/home/index.js';
 import { PharmacyProfileScreen } from '../screens/profile/PharmacyProfileScreen.jsx';
 import { StaffListScreen } from '../screens/staff/StaffListScreen.jsx';
 import { StaffFormScreen } from '../screens/staff/StaffFormScreen.jsx';
@@ -115,6 +116,11 @@ export const RootNavigator = () => {
             component={DispenseConfirmationScreen}
             options={{ animation: 'slide_from_right' }}
           />
+          <Stack.Screen
+            name="UploadClosingData"
+            component={UploadClosingDataScreen}
+            options={{ animation: 'slide_from_right' }}
+          />
 
           {/* Ecosystem: Trade Schemes, Distributor Connect & Engage */}
           <Stack.Screen
@@ -136,6 +142,11 @@ export const RootNavigator = () => {
           {/* Wallet & Settings */}
           <Stack.Screen
             name="ImpactWallet"
+            component={ImpactWalletScreen}
+            options={{ animation: 'slide_from_right' }}
+          />
+          <Stack.Screen
+            name="ImpactIndex"
             component={ImpactWalletScreen}
             options={{ animation: 'slide_from_right' }}
           />

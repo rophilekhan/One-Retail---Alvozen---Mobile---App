@@ -20,8 +20,8 @@ export const AppBackButton = ({
   style,
   ...rest
 }) => {
-  const { isDark } = useTheme();
-  const iconColor = isDark ? '#FFFFFF' : '#020202';
+  const { isDark, colors } = useTheme();
+  const iconColor = isDark ? '#FFFFFF' : (colors?.brand?.primaryDark || '#0F4761');
   const iconSize = Math.round(size * 0.48);
 
   return (

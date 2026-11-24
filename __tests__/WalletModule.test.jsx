@@ -18,8 +18,49 @@ import {
   ImpactScoreModal,
   PiiActivitiesCard,
 } from '../src/components/wallet/index.js';
+import { PiiScoreBreakdownCard } from '../src/components/profile/index.js';
+import {
+  getPharmacyTierTheme,
+  resolveTierFromPoints,
+  normalizePharmacyTier,
+  PHARMACY_TIER_KEYS,
+} from '../src/theme/tierThemes.js';
 
 describe('OneRetail Wallet & Impact Index Module', () => {
+  test('tierThemes resolves all 4 tiers with dynamic tokens across light and dark modes', () => {
+    const keys = [
+      PHARMACY_TIER_KEYS.GENERAL_TRADE,
+      PHARMACY_TIER_KEYS.ESTABLISHED,
+      PHARMACY_TIER_KEYS.KEY_ACCOUNT,
+      PHARMACY_TIER_KEYS.FLAGSHIP,
+    ];
+
+    keys.forEach((key) => {
+      const darkTheme = getPharmacyTierTheme(key, true);
+      const lightTheme = getPharmacyTierTheme(key, false);
+
+      expect(darkTheme.key).toBe(key);
+      expect(lightTheme.key).toBe(key);
+      expect(darkTheme.accentColor).toBeDefined();
+      expect(lightTheme.accentColor).toBeDefined();
+      expect(darkTheme.arcGradient).toBeDefined();
+      expect(darkTheme.glowColors.length).toBeGreaterThanOrEqual(2);
+      expect(darkTheme.perks.length).toBeGreaterThan(0);
+      expect(typeof darkTheme.IconComponent).toBe('function');
+    });
+
+    // Test tier resolution from points
+    expect(resolveTierFromPoints(150)).toBe(PHARMACY_TIER_KEYS.GENERAL_TRADE);
+    expect(resolveTierFromPoints(350)).toBe(PHARMACY_TIER_KEYS.ESTABLISHED);
+    expect(resolveTierFromPoints(750)).toBe(PHARMACY_TIER_KEYS.KEY_ACCOUNT);
+    expect(resolveTierFromPoints(1200)).toBe(PHARMACY_TIER_KEYS.FLAGSHIP);
+
+    // Test OneRx legacy key normalization
+    expect(normalizePharmacyTier('emerging')).toBe(PHARMACY_TIER_KEYS.GENERAL_TRADE);
+    expect(normalizePharmacyTier('senior')).toBe(PHARMACY_TIER_KEYS.KEY_ACCOUNT);
+    expect(normalizePharmacyTier('distinguished')).toBe(PHARMACY_TIER_KEYS.FLAGSHIP);
+  });
+
   test('renders ImpactHeroSection across OneRetail 4 tiers without error', async () => {
     const tiers = ['general_trade', 'established', 'key_account', 'flagship'];
 
@@ -83,7 +124,8 @@ describe('OneRetail Wallet & Impact Index Module', () => {
             activeTab="All"
             onTabChange={() => {}}
           />
-          <PiiActivitiesCard piiScore={780} />
+          <PiiActivitiesCard piiScore={780} tier="key_account" />
+          <PiiScoreBreakdownCard score={780} tier="key_account" />
         </ThemeProvider>
       );
     });
@@ -115,5 +157,25 @@ describe('OneRetail Wallet & Impact Index Module', () => {
     await ReactTestRenderer.act(async () => {
       renderer.unmount();
     });
+  }, 30000);
+
+  it('renders TierLevelUpModal with visible=true across all 4 tiers without gradient element errors', async () => {
+    const tiers = ['general_trade', 'established', 'key_account', 'flagship'];
+    for (const tier of tiers) {
+      for (const mode of ['light', 'dark']) {
+        let renderer;
+        await ReactTestRenderer.act(async () => {
+          renderer = ReactTestRenderer.create(
+            <ThemeProvider initialMode={mode}>
+              <TierLevelUpModal visible={true} onClose={() => {}} tier={tier} />
+            </ThemeProvider>
+          );
+        });
+        expect(renderer).toBeDefined();
+        await ReactTestRenderer.act(async () => {
+          renderer.unmount();
+        });
+      }
+    }
   }, 30000);
 });

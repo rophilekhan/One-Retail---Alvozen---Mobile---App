@@ -1,20 +1,19 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
-  ScrollView,
   TouchableOpacity,
   StyleSheet,
-  Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import LinearGradient from 'react-native-linear-gradient';
+import Svg, { Circle, Path } from 'react-native-svg';
 import { useTheme } from '../../theme/index.js';
 import { scale, verticalScale, scaleFont } from '../../theme/responsive.js';
 import { fontFamilies } from '../../theme/typography.js';
 import {
   AppText,
-  AppButton,
   AppBadge,
+  AppScreenContainer,
+  MetricIconDisc,
 } from '../../components/core/index.js';
 import {
   ImpactHeroSection,
@@ -29,68 +28,25 @@ import {
   ReviewConfirmWithdrawalModal,
   PiiActivitiesCard,
 } from '../../components/wallet/index.js';
-import { WithdrawIcon } from '../../assets/vectors/ImpactIcons.jsx';
+import { WithdrawIcon, TierGemIcon } from '../../assets/vectors/ImpactIcons.jsx';
 import { usePharmacyStore } from '../../store/usePharmacyStore.js';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
-/**
- * Dynamic Screen Background Gradients across tiers matching OneRx Figma screens
- */
-const TIER_BACKGROUND_GRADIENTS = {
-  general_trade: {
-    light: ['#B0E7E1', '#99E1D6', '#C4EDE7', '#DBF4F1', '#D6F3EF', '#FFFFFF'],
-    dark: ['#181E1E', '#141D1C', '#1C1D1F', '#212524', '#161616', '#010101'],
-  },
-  emerging: {
-    light: ['#B0E7E1', '#99E1D6', '#C4EDE7', '#DBF4F1', '#D6F3EF', '#FFFFFF'],
-    dark: ['#181E1E', '#141D1C', '#1C1D1F', '#212524', '#161616', '#010101'],
-  },
-  established: {
-    light: ['#FEBA8B', '#FAA96A', '#FDAE75', '#FBDFCA', '#FEDCC3', '#FFFFFF'],
-    dark: ['#211813', '#20150F', '#221B13', '#26221F', '#161616', '#010101'],
-  },
-  key_account: {
-    light: ['#B0D7E8', '#9CCAE1', '#C6E2F0', '#D9EDF6', '#D6EAF3', '#FFFFFF'],
-    dark: ['#181C1F', '#151A1E', '#191D1C', '#202425', '#161616', '#010101'],
-  },
-  senior: {
-    light: ['#B0D7E8', '#9CCAE1', '#C6E2F0', '#D9EDF6', '#D6EAF3', '#FFFFFF'],
-    dark: ['#181C1F', '#151A1E', '#191D1C', '#202425', '#161616', '#010101'],
-  },
-  flagship: {
-    light: ['#F2DDFE', '#EFD2FE', '#EFDFF9', '#FAEDFF', '#FAEDFF', '#FFFFFF'],
-    dark: ['#1F1D20', '#1D1B20', '#1F1D20', '#262427', '#161616', '#010101'],
-  },
-  distinguished: {
-    light: ['#F2DDFE', '#EFD2FE', '#EFDFF9', '#FAEDFF', '#FAEDFF', '#FFFFFF'],
-    dark: ['#1F1D20', '#1D1B20', '#1F1D20', '#262427', '#161616', '#010101'],
-  },
-};
+import { getPharmacyTierTheme, normalizePharmacyTier } from '../../theme/tierThemes.js';
 
 /**
- * ImpactWalletScreen
- *
- * Pharmacy Impact Index (PII) & Financial Rewards screen:
- * - Dynamic tier background radiant glow
- * - ImpactHeroSection arc gauge
- * - Points & Earnings stat cards
- * - 3 Activity Pillars breakdown
- * - Complete payout withdrawal workflow
+ * ImpactWalletScreen - Pharmacy Impact Index (PII) & Financial Rewards screen
+ * Single unified scroll container with generous bottom nav clearance.
  */
 export const ImpactWalletScreen = ({ navigation }) => {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const pharmacy = usePharmacyStore();
 
-  const currentTier = pharmacy.piiTier || 'key_account';
-  const piiScore = pharmacy.piiScore || 620;
+  const currentTier = pharmacy.piiTierKey || normalizePharmacyTier(pharmacy.piiTier);
+  const piiScore = pharmacy.piiScore || pharmacy.piiPoints || 842;
+  const pharmacyName = pharmacy.name || 'City Meds Pharmacy';
 
-  // Background Gradient
-  const bgGradients = useMemo(() => {
-    const raw = String(currentTier).toLowerCase().replace(' ', '_');
-    const tierMap = TIER_BACKGROUND_GRADIENTS[raw] || TIER_BACKGROUND_GRADIENTS.key_account;
-    return isDark ? tierMap.dark : tierMap.light;
+  const tierTheme = useMemo(() => {
+    return getPharmacyTierTheme(currentTier, isDark);
   }, [currentTier, isDark]);
 
   // Modal States
@@ -103,7 +59,6 @@ export const ImpactWalletScreen = ({ navigation }) => {
   const [isOtpModalVisible, setIsOtpModalVisible] = useState(false);
   const [isAmountModalVisible, setIsAmountModalVisible] = useState(false);
   const [isReviewModalVisible, setIsReviewModalVisible] = useState(false);
-
   const [enteredAccountNumber, setEnteredAccountNumber] = useState('0345-2102014');
   const [withdrawalAmount, setWithdrawalAmount] = useState('15,000');
   const [taxNtn, setTaxNtn] = useState('7819204-5');
@@ -114,15 +69,21 @@ export const ImpactWalletScreen = ({ navigation }) => {
     ntnNumber: '7819204-5',
   });
 
+  useEffect(() => {
+    if (pharmacy.levelUpNotification) setIsLevelUpModalVisible(true);
+  }, [pharmacy.levelUpNotification]);
+
+  const handleSelectTier = (newTierKey) => {
+    pharmacy.setPiiTier?.(newTierKey);
+    setIsScoreModalVisible(false);
+    setTimeout(() => setIsLevelUpModalVisible(true), 250);
+  };
+
   const handleSelectMethod = (method) => {
     setSelectedWithdrawMethod(method);
     setIsWithdrawModalVisible(false);
-
-    if (method.id === 'bank') {
-      setIsBankTransferModalVisible(true);
-    } else {
-      setIsAccountDetailsModalVisible(true);
-    }
+    if (method.id === 'bank') setIsBankTransferModalVisible(true);
+    else setIsAccountDetailsModalVisible(true);
   };
 
   const handleAccountContinue = (accountNumber, ntnNumber) => {
@@ -140,108 +101,122 @@ export const ImpactWalletScreen = ({ navigation }) => {
     setIsOtpModalVisible(true);
   };
 
-  const handleOtpVerify = () => {
-    setIsOtpModalVisible(false);
-    setIsAmountModalVisible(true);
-  };
-
-  const handleAmountContinue = (amount) => {
-    setWithdrawalAmount(amount);
-    setIsAmountModalVisible(false);
-    setIsReviewModalVisible(true);
-  };
-
-  const handleFinalConfirm = () => {
-    setIsReviewModalVisible(false);
-  };
-
   return (
-    <View style={styles.container}>
-      <LinearGradient
-        colors={bgGradients}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 0.95 }}
-        style={styles.gradientBg}
-      >
-        {/* Top Header */}
-        <View style={[styles.headerRow, { paddingTop: insets.top + verticalScale(8) }]}>
-          <View>
-            <AppText style={[styles.headerTitle, { color: colors.text.primary }]}>
-              Impact Index & Wallet
-            </AppText>
-            <AppText style={[styles.headerSubtitle, { color: isDark ? '#94A3B8' : '#64748B' }]}>
-              Verified Pharmacy Performance
-            </AppText>
+    <AppScreenContainer
+      scrollable={true}
+      withAmbientGlow={true}
+      withBottomNavClearance={true}
+      withHorizontalPadding={false}
+      contentContainerStyle={{
+        paddingHorizontal: scale(20),
+      }}
+    >
+      {/* 1. Single-row Impact Header */}
+      <View style={styles.headerRow}>
+        <View style={styles.headerLeftCol}>
+          <AppText style={[styles.headerTitle, { color: colors.text?.primary || (isDark ? '#FFFFFF' : '#020202') }]}>
+            Impact Index & Wallet
+          </AppText>
+          <View style={styles.headerPillRow}>
+            <TierGemIcon tier={currentTier} size={scale(16)} isApex={true} />
+            <AppBadge
+              label={tierTheme.label}
+              style={{
+                backgroundColor: tierTheme.badgeBg,
+                borderColor: tierTheme.badgeBorder,
+              }}
+            />
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => navigation.navigate('PharmacyProfile')}
+              style={styles.profileBadgeBtn}
+              accessibilityRole="button"
+              accessibilityLabel="View Pharmacy Profile"
+            >
+              <AppBadge label="Profile >" variant="neutral" size="sm" />
+            </TouchableOpacity>
           </View>
-
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => navigation.navigate('PharmacyProfile')}
-            style={styles.profileBadgeBtn}
-          >
-            <AppBadge label="Profile &gt;" variant="brand" />
-          </TouchableOpacity>
         </View>
 
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: verticalScale(100) }]}
+        {/* Right Info Icon Button (Opens Tier Roadmap & Score Modal) */}
+        <TouchableOpacity
+          activeOpacity={0.75}
+          onPress={() => setIsScoreModalVisible(true)}
+          style={styles.infoBtn}
+          accessibilityRole="button"
+          accessibilityLabel="PII Score Breakdown and Tier Roadmap"
         >
-          {/* 1. Arc Gauge Hero Section */}
-          <ImpactHeroSection
+          <MetricIconDisc size={40} isDark={isDark} variant={currentTier}>
+            <Svg width={scale(18)} height={scale(18)} viewBox="0 0 24 24" fill="none">
+              <Circle
+                cx="12"
+                cy="12"
+                r="9.5"
+                stroke={tierTheme.accentColor}
+                strokeWidth="1.8"
+              />
+              <Path
+                d="M12 16.5V11M12 7.75h.01"
+                stroke={tierTheme.accentColor}
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+            </Svg>
+          </MetricIconDisc>
+        </TouchableOpacity>
+      </View>
+
+      {/* 2. Dynamic Arc Gauge Hero Section */}
+      <ImpactHeroSection
+        tier={currentTier}
+        score={piiScore}
+        onScorePress={() => setIsScoreModalVisible(true)}
+        onTierPillPress={() => setIsScoreModalVisible(true)}
+      />
+
+      {/* 3. Stat Cards Row: Points & Earnings */}
+      <View style={styles.statsRow}>
+        <View style={{ flex: 1 }}>
+          <ImpactStatCard
+            title="POINTS EARNED"
+            amount="12,450"
+            suffix="pts"
+            icon="points"
             tier={currentTier}
-            score={piiScore}
-            onPressScore={() => setIsScoreModalVisible(true)}
-            onPressMilestone={() => setIsLevelUpModalVisible(true)}
+            onPress={() => navigation.navigate('PointsEarned')}
           />
+        </View>
+        <View style={{ flex: 1 }}>
+          <ImpactStatCard
+            title="TOTAL EARNINGS"
+            amount="48,500"
+            suffix="PKR"
+            icon="earnings"
+            tier={currentTier}
+            onPress={() => navigation.navigate('Earnings')}
+          />
+        </View>
+      </View>
 
-          {/* 2. Stat Cards Row: Points & Earnings */}
-          <View style={styles.statsRow}>
-            <View style={{ flex: 1 }}>
-              <ImpactStatCard
-                title="POINTS EARNED"
-                amount="12,450"
-                suffix="pts"
-                icon="points"
-                onPress={() => navigation.navigate('PointsEarned')}
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <ImpactStatCard
-                title="TOTAL EARNINGS"
-                amount="48,500"
-                suffix="PKR"
-                icon="earnings"
-                onPress={() => navigation.navigate('Earnings')}
-              />
-            </View>
-          </View>
+      {/* 4. Withdraw Action Button */}
+      <TouchableOpacity
+        activeOpacity={0.8}
+        onPress={() => setIsWithdrawModalVisible(true)}
+        style={[
+          styles.withdrawActionBtn,
+          { backgroundColor: tierTheme.withdrawBg || tierTheme.accentColor },
+        ]}
+      >
+        <WithdrawIcon size={scale(18)} color="#FFFFFF" />
+        <AppText style={styles.withdrawActionBtnText}>
+          Withdraw Earnings Payout
+        </AppText>
+      </TouchableOpacity>
 
-          {/* 3. Withdraw Action Button */}
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => setIsWithdrawModalVisible(true)}
-            style={[
-              styles.withdrawActionBtn,
-              {
-                backgroundColor: isDark
-                  ? (colors.brand?.primary || '#009BA9')
-                  : (colors.brand?.primaryDark || '#0F4761'),
-              },
-            ]}
-          >
-            <WithdrawIcon size={scale(18)} color="#FFFFFF" />
-            <AppText style={styles.withdrawActionBtnText}>
-              Withdraw Earnings Payout
-            </AppText>
-          </TouchableOpacity>
-
-          {/* 4. 3 Activity Pillars */}
-          <View style={styles.activitiesWrapper}>
-            <PiiActivitiesCard piiScore={piiScore} />
-          </View>
-        </ScrollView>
-      </LinearGradient>
+      {/* 5. 3 Activity Pillars */}
+      <View style={styles.activitiesWrapper}>
+        <PiiActivitiesCard piiScore={piiScore} tier={currentTier} />
+      </View>
 
       {/* Modals Flow */}
       <ImpactScoreModal
@@ -249,20 +224,21 @@ export const ImpactWalletScreen = ({ navigation }) => {
         onClose={() => setIsScoreModalVisible(false)}
         tier={currentTier}
         score={piiScore}
+        onSelectTier={handleSelectTier}
       />
-
       <TierLevelUpModal
         visible={isLevelUpModalVisible}
-        onClose={() => setIsLevelUpModalVisible(false)}
+        onClose={() => {
+          setIsLevelUpModalVisible(false);
+          pharmacy.clearLevelUpNotification?.();
+        }}
         tier={currentTier}
       />
-
       <SelectWithdrawMethodModal
         visible={isWithdrawModalVisible}
         onClose={() => setIsWithdrawModalVisible(false)}
         onSelectMethod={handleSelectMethod}
       />
-
       <WithdrawAccountDetailsModal
         visible={isAccountDetailsModalVisible}
         onClose={() => setIsAccountDetailsModalVisible(false)}
@@ -273,7 +249,6 @@ export const ImpactWalletScreen = ({ navigation }) => {
         onContinue={handleAccountContinue}
         selectedMethod={selectedWithdrawMethod}
       />
-
       <WithdrawBankTransferModal
         visible={isBankTransferModalVisible}
         onClose={() => setIsBankTransferModalVisible(false)}
@@ -283,21 +258,20 @@ export const ImpactWalletScreen = ({ navigation }) => {
         }}
         onContinue={handleBankContinue}
       />
-
       <EnterOTPModal
         visible={isOtpModalVisible}
         onClose={() => setIsOtpModalVisible(false)}
         onBack={() => {
           setIsOtpModalVisible(false);
-          if (selectedWithdrawMethod?.id === 'bank') {
-            setIsBankTransferModalVisible(true);
-          } else {
-            setIsAccountDetailsModalVisible(true);
-          }
+          selectedWithdrawMethod?.id === 'bank'
+            ? setIsBankTransferModalVisible(true)
+            : setIsAccountDetailsModalVisible(true);
         }}
-        onVerify={handleOtpVerify}
+        onVerify={() => {
+          setIsOtpModalVisible(false);
+          setIsAmountModalVisible(true);
+        }}
       />
-
       <EnterWithdrawalAmountModal
         visible={isAmountModalVisible}
         onClose={() => setIsAmountModalVisible(false)}
@@ -305,10 +279,13 @@ export const ImpactWalletScreen = ({ navigation }) => {
           setIsAmountModalVisible(false);
           setIsOtpModalVisible(true);
         }}
-        onContinue={handleAmountContinue}
+        onContinue={(amount) => {
+          setWithdrawalAmount(amount);
+          setIsAmountModalVisible(false);
+          setIsReviewModalVisible(true);
+        }}
         availableBalance="48,500"
       />
-
       <ReviewConfirmWithdrawalModal
         visible={isReviewModalVisible}
         onClose={() => setIsReviewModalVisible(false)}
@@ -316,7 +293,7 @@ export const ImpactWalletScreen = ({ navigation }) => {
           setIsReviewModalVisible(false);
           setIsAmountModalVisible(true);
         }}
-        onConfirm={handleFinalConfirm}
+        onConfirm={() => setIsReviewModalVisible(false)}
         selectedMethod={selectedWithdrawMethod}
         withdrawalData={{
           methodName: selectedWithdrawMethod?.name,
@@ -328,39 +305,40 @@ export const ImpactWalletScreen = ({ navigation }) => {
           amount: withdrawalAmount,
         }}
       />
-    </View>
+    </AppScreenContainer>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  gradientBg: {
-    flex: 1,
-  },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: scale(20),
-    paddingBottom: verticalScale(12),
+    paddingVertical: verticalScale(12),
+    marginBottom: verticalScale(8),
+  },
+  headerLeftCol: {
+    flex: 1,
+    paddingRight: scale(12),
   },
   headerTitle: {
     fontSize: scaleFont(20),
     fontFamily: fontFamilies.primaryBold,
     fontWeight: '700',
+    letterSpacing: -0.3,
   },
-  headerSubtitle: {
-    fontSize: scaleFont(12.5),
-    fontFamily: fontFamilies.primaryRegular,
-    marginTop: verticalScale(2),
+  headerPillRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(8),
+    marginTop: verticalScale(6),
   },
   profileBadgeBtn: {
-    paddingVertical: verticalScale(4),
+    marginLeft: scale(2),
   },
-  scrollContent: {
-    paddingHorizontal: scale(20),
+  infoBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   statsRow: {
     flexDirection: 'row',

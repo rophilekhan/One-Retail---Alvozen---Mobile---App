@@ -1,19 +1,39 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { useTheme } from '../../theme/index.js';
 import { scale, verticalScale, scaleFont } from '../../theme/responsive.js';
 import { fontFamilies } from '../../theme/typography.js';
 import { AppText, GlassCard, FieldIconBadge } from '../core/index.js';
 import { PointsStarIcon, EarningsDollarIcon, ChevronRightIcon } from '../../assets/vectors/index.js';
+import { getPharmacyTierTheme } from '../../theme/tierThemes.js';
 
 /**
  * ImpactStatCard
  * Exact 1:1 port of OneRx ImpactStatCard with GlassCard, FieldIconBadge,
- * DM Mono value readout, and chevron.
+ * DM Mono value readout, and chevron. Dynamic tier accent styling.
+ *
+ * @param {Object} props
+ * @param {'points' | 'earnings' | string} [props.type='points']
+ * @param {string|number} [props.value='0']
+ * @param {string|number} [props.amount]
+ * @param {string} [props.label]
+ * @param {string} [props.title]
+ * @param {string} [props.suffix]
+ * @param {string} [props.subValue]
+ * @param {string} [props.unit]
+ * @param {Function} [props.onPress]
+ * @param {React.ReactNode} [props.icon]
+ * @param {boolean} [props.showChevron=true]
+ * @param {Object} [props.cardStyle]
+ * @param {string} [props.badgeVariant]
+ * @param {number} [props.radius]
+ * @param {string} [props.tier]
+ * @param {string} [props.accentColor]
  */
 export const ImpactStatCard = ({
   type = 'points',
   value = '0',
+  amount,
   label,
   title,
   suffix,
@@ -25,13 +45,21 @@ export const ImpactStatCard = ({
   cardStyle,
   badgeVariant,
   radius,
+  tier,
+  accentColor,
 }) => {
   const { colors, isDark } = useTheme();
 
-  const isPoints = type === 'points';
+  const isPoints = type === 'points' || icon === 'points';
+  const displayValue = amount !== undefined ? amount : value;
   const displayLabel = label || title || (isPoints ? 'Points' : 'Earnings');
-  const displaySuffix = suffix || subValue || unit || (!isPoints ? 'PKR' : null);
+  const displaySuffix = suffix || subValue || unit || (!isPoints ? 'PKR' : 'pts');
 
+  const tierTheme = useMemo(() => {
+    return tier ? getPharmacyTierTheme(tier, isDark) : null;
+  }, [tier, isDark]);
+
+  const effectiveAccent = accentColor || tierTheme?.accentColor;
   const iconColor = isDark ? '#FFFFFF' : '#0F172A';
   const cardRadius = radius || cardStyle?.borderRadius || scale(26);
 
@@ -43,7 +71,7 @@ export const ImpactStatCard = ({
       style={styles.touchable}
       accessible={true}
       accessibilityRole="button"
-      accessibilityLabel={`${displayLabel}: ${value} ${displaySuffix || ''}`}
+      accessibilityLabel={`${displayLabel}: ${displayValue} ${displaySuffix || ''}`}
     >
       <GlassCard
         radius={cardRadius}
@@ -52,10 +80,13 @@ export const ImpactStatCard = ({
           {
             backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#FFFFFF',
             borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.8)',
+            borderTopColor: effectiveAccent
+              ? (isDark ? `${effectiveAccent}66` : effectiveAccent)
+              : (isDark ? 'rgba(255, 255, 255, 0.18)' : 'rgba(255, 255, 255, 0.95)'),
             borderWidth: 1.2,
-            shadowColor: '#000',
+            shadowColor: effectiveAccent || '#000000',
             shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: isDark ? 0 : 0.03,
+            shadowOpacity: isDark ? (effectiveAccent ? 0.2 : 0) : 0.04,
             shadowRadius: 8,
             elevation: 0,
           },
@@ -65,19 +96,19 @@ export const ImpactStatCard = ({
         <View style={styles.content}>
           {/* Top Row: Icon wrapped inside FieldIconBadge + Chevron on right */}
           <View style={styles.topRow}>
-            {icon ? (
+            {icon && typeof icon !== 'string' ? (
               icon
             ) : (
               <FieldIconBadge
                 isDark={isDark}
                 size={38}
-                variant={badgeVariant || (isPoints ? 'name' : 'first_visit')}
+                variant={badgeVariant || tierTheme?.key || (isPoints ? 'tier_established' : 'first_visit')}
                 marginRight={0}
               >
                 {isPoints ? (
-                  <PointsStarIcon size={scale(20)} color={iconColor} />
+                  <PointsStarIcon size={scale(20)} color={effectiveAccent || iconColor} />
                 ) : (
-                  <EarningsDollarIcon size={scale(20)} color={iconColor} />
+                  <EarningsDollarIcon size={scale(20)} color={effectiveAccent || iconColor} />
                 )}
               </FieldIconBadge>
             )}
@@ -108,14 +139,14 @@ export const ImpactStatCard = ({
                   { color: isDark ? '#FFFFFF' : '#000000' },
                 ]}
               >
-                {value}
+                {displayValue}
               </AppText>
 
               {displaySuffix && (
                 <AppText
                   style={[
                     styles.suffixText,
-                    { color: isDark ? '#94A3B8' : '#737373' },
+                    { color: effectiveAccent || (isDark ? '#94A3B8' : '#737373') },
                   ]}
                 >
                   {displaySuffix}

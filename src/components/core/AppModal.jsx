@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Modal,
   View,
@@ -8,12 +8,15 @@ import {
   Platform,
   Keyboard,
   Animated,
+  useWindowDimensions,
+  KeyboardAvoidingView,
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/index.js';
-import { scale } from '../../theme/responsive.js';
+import { scale, verticalScale } from '../../theme/responsive.js';
 import AppText from './AppText.jsx';
+import AppBackButton from './AppBackButton.jsx';
 
 /**
  * AppModal - Universal Bottom Sheet & Center Dialog
@@ -42,17 +45,26 @@ export const AppModal = ({
   scrollable = false,
   showBackButton = false,
   showCloseButton = !showBackButton,
+  footer,
+  footerStyle,
 }) => {
   const { colors, radii, spacing, shadows } = useTheme();
   const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
 
   const isBottomSheet = type === 'bottomSheet';
 
   // Keyboard height tracking
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const animatedShift = useRef(new Animated.Value(0)).current;
+
+  // Lock available height to guarantee header never gets clipped off-screen:
+  // windowHeight - insets.top - verticalScale(16) - (Platform.OS === 'android' ? keyboardHeight : 0)
+  const availableHeight = windowHeight - insets.top - verticalScale(16) - (Platform.OS === 'android' ? keyboardHeight : 0);
 
   useEffect(() => {
     if (!visible) {
+      setKeyboardHeight(0);
       animatedShift.setValue(0);
       return;
     }
@@ -62,15 +74,17 @@ export const AppModal = ({
 
     const onShow = (e) => {
       const height = e?.endCoordinates?.height || 0;
+      setKeyboardHeight(height);
       const duration = Platform.OS === 'ios' ? (e?.duration || 250) : 200;
       Animated.timing(animatedShift, {
-        toValue: height,
+        toValue: Platform.OS === 'ios' ? height : 0,
         duration,
         useNativeDriver: false,
       }).start();
     };
 
     const onHide = (e) => {
+      setKeyboardHeight(0);
       const duration = Platform.OS === 'ios' ? (e?.duration || 250) : 180;
       Animated.timing(animatedShift, {
         toValue: 0,
@@ -98,15 +112,148 @@ export const AppModal = ({
 
   const handleClose = () => {
     Keyboard.dismiss();
+    setKeyboardHeight(0);
     onClose?.();
   };
+
+  const sheetCard = (
+    <Animated.View
+      style={[
+        styles.modalSurface,
+        isBottomSheet ? styles.sheetSurface : styles.dialogSurface,
+        {
+          width: '100%',
+          backgroundColor: colors.surface?.card || (colors.isDark ? '#020202' : '#FFFFFF'),
+          borderColor: colors.border?.card || 'rgba(255, 255, 255, 0.12)',
+          borderTopLeftRadius: radii.sheet,
+          borderTopRightRadius: radii.sheet,
+          borderBottomLeftRadius: isBottomSheet ? 0 : radii.sheet,
+          borderBottomRightRadius: isBottomSheet ? 0 : radii.sheet,
+          overflow: 'hidden',
+          padding: spacing?.cardPadding || 16,
+        },
+        shadows.card,
+        style,
+        isBottomSheet && {
+          maxHeight: availableHeight,
+          paddingBottom: keyboardHeight > 0 ? verticalScale(12) : safePaddingBottom,
+        },
+        !isBottomSheet && {
+          transform: [
+            {
+              translateY: animatedShift.interpolate({
+                inputRange: [0, 400],
+                outputRange: [0, -100],
+                extrapolate: 'clamp',
+              }),
+            },
+          ],
+        },
+      ]}
+    >
+      {/* Drag Handle for Bottom Sheet */}
+      {isBottomSheet && (
+        <View style={styles.handleContainer}>
+          <View
+            style={[
+              styles.handle,
+              { backgroundColor: colors.border?.subtle || 'rgba(255, 255, 255, 0.15)' },
+            ]}
+          />
+        </View>
+      )}
+
+      {/* Modal Header */}
+      {title ? (
+        <View style={[styles.header, { flexShrink: 0 }]}>
+          {showBackButton ? (
+            <View style={styles.headerTitleWithBack}>
+              <AppBackButton
+                onPress={handleClose}
+                size={scale(36)}
+                style={styles.backButton}
+              />
+              <AppText
+                variant="titleLarge"
+                colorType="primary"
+                style={[styles.title, titleStyle]}
+                numberOfLines={1}
+              >
+                {title}
+              </AppText>
+            </View>
+          ) : (
+            <AppText
+              variant="headlineMedium"
+              colorType="primary"
+              style={[styles.title, titleStyle]}
+            >
+              {title}
+            </AppText>
+          )}
+
+          {showCloseButton ? (
+            <TouchableOpacity
+              onPress={handleClose}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              style={styles.closeBtn}
+            >
+              <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+                <Path
+                  d="M18 6L6 18M6 6L18 18"
+                  stroke={colors.text?.muted || '#787878'}
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </Svg>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+      ) : null}
+
+      {scrollable ? (
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          contentContainerStyle={[
+            styles.scrollableContent,
+            {
+              paddingHorizontal: spacing?.screenHorizontal || scale(16),
+              paddingTop: spacing?.sm || verticalScale(8),
+              paddingBottom: keyboardHeight > 0
+                ? verticalScale(12)
+                : Math.max(insets.bottom, verticalScale(16)),
+              gap: spacing?.md || verticalScale(14),
+            },
+          ]}
+        >
+          {children}
+        </ScrollView>
+      ) : (
+        children
+      )}
+
+      {footer ? (
+        <View style={[{ flexShrink: 0 }, footerStyle]}>
+          {footer}
+        </View>
+      ) : null}
+    </Animated.View>
+  );
 
   const content = (
     <View
       style={[
         styles.overlay,
-        { backgroundColor: colors.background?.overlay || 'rgba(0, 0, 0, 0.65)' },
-        isBottomSheet ? styles.overlayBottom : styles.overlayCenter,
+        {
+          flex: 1,
+          backgroundColor: colors.background?.overlay || 'rgba(0, 0, 0, 0.65)',
+          justifyContent: isBottomSheet ? 'flex-end' : 'center',
+          alignItems: isBottomSheet ? 'stretch' : 'center',
+          paddingBottom: (isBottomSheet && Platform.OS === 'android') ? keyboardHeight : 0,
+        },
       ]}
     >
       {/* Backdrop */}
@@ -116,126 +263,13 @@ export const AppModal = ({
         onPress={handleClose}
       />
 
-      {/* Modal Surface */}
-      <Animated.View
-        style={[
-          styles.modalSurface,
-          isBottomSheet ? styles.sheetSurface : styles.dialogSurface,
-          {
-            backgroundColor: colors.surface?.card || (colors.isDark ? '#020202' : '#FFFFFF'),
-            borderColor: colors.border?.card || 'rgba(255, 255, 255, 0.12)',
-            borderTopLeftRadius: radii.sheet,
-            borderTopRightRadius: radii.sheet,
-            borderBottomLeftRadius: isBottomSheet ? 0 : radii.sheet,
-            borderBottomRightRadius: isBottomSheet ? 0 : radii.sheet,
-            padding: spacing?.cardPadding || 16,
-          },
-          shadows.card,
-          style,
-          isBottomSheet && {
-            marginBottom: animatedShift,
-            paddingBottom: safePaddingBottom,
-          },
-          !isBottomSheet && {
-            transform: [
-              {
-                translateY: animatedShift.interpolate({
-                  inputRange: [0, 400],
-                  outputRange: [0, -100],
-                  extrapolate: 'clamp',
-                }),
-              },
-            ],
-          },
-        ]}
-      >
-        {/* Drag Handle for Bottom Sheet */}
-        {isBottomSheet && (
-          <View style={styles.handleContainer}>
-            <View
-              style={[
-                styles.handle,
-                { backgroundColor: colors.border?.subtle || 'rgba(255, 255, 255, 0.15)' },
-              ]}
-            />
-          </View>
-        )}
-
-        {/* Modal Header */}
-        {title ? (
-          <View style={styles.header}>
-            {showBackButton ? (
-              <View style={styles.headerTitleWithBack}>
-                <TouchableOpacity
-                  onPress={handleClose}
-                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                  style={styles.backButton}
-                  activeOpacity={0.7}
-                >
-                  <Svg width={scale(20)} height={scale(20)} viewBox="0 0 24 24" fill="none">
-                    <Path
-                      d="M15 19L8 12L15 5"
-                      stroke={colors.text.primary}
-                      strokeWidth="2.2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </Svg>
-                </TouchableOpacity>
-                <AppText
-                  variant="titleLarge"
-                  colorType="primary"
-                  style={[styles.title, titleStyle]}
-                >
-                  {title}
-                </AppText>
-              </View>
-            ) : (
-              <AppText
-                variant="headlineMedium"
-                colorType="primary"
-                style={[styles.title, titleStyle]}
-              >
-                {title}
-              </AppText>
-            )}
-
-            {showCloseButton ? (
-              <TouchableOpacity
-                onPress={handleClose}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                style={styles.closeBtn}
-              >
-                <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-                  <Path
-                    d="M18 6L6 18M6 6L18 18"
-                    stroke={colors.text?.muted || '#787878'}
-                    strokeWidth="2.2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </Svg>
-              </TouchableOpacity>
-            ) : null}
-          </View>
-        ) : null}
-
-        {scrollable ? (
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="on-drag"
-            contentContainerStyle={[
-              styles.scrollableContent,
-              isBottomSheet && { paddingBottom: 20 + Math.max(insets.bottom, 0) },
-            ]}
-          >
-            {children}
-          </ScrollView>
-        ) : (
-          children
-        )}
-      </Animated.View>
+      {isBottomSheet && Platform.OS === 'ios' ? (
+        <KeyboardAvoidingView behavior="padding" style={{ width: '100%' }}>
+          {sheetCard}
+        </KeyboardAvoidingView>
+      ) : (
+        sheetCard
+      )}
     </View>
   );
 
@@ -253,6 +287,9 @@ export const AppModal = ({
 };
 
 const styles = StyleSheet.create({
+  keyboardAvoidWrap: {
+    flex: 1,
+  },
   overlay: {
     flex: 1,
   },

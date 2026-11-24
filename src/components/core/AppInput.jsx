@@ -14,15 +14,19 @@ import Svg, {
   Path,
 } from 'react-native-svg';
 import { useTheme } from '../../theme/index.js';
+import { scale, verticalScale, scaleFont } from '../../theme/responsive.js';
+import { fontFamilies } from '../../theme/typography.js';
 import AppText from './AppText.jsx';
 
 /**
  * AppInput - OneRetail Standard Text Input Atom
- * Features gradient background, spherical icon badge, and inline password visibility toggle.
+ * Features gradient background, spherical icon badge, separated label,
+ * and high-contrast light/dark placeholder & icon tinting.
  *
  * @param {Object} props
  * @param {string} [props.label]
  * @param {string} [props.placeholder]
+ * @param {string} [props.placeholderTextColor]
  * @param {string} [props.value]
  * @param {Function} [props.onChangeText]
  * @param {string} [props.helperText]
@@ -46,6 +50,7 @@ import AppText from './AppText.jsx';
 export const AppInput = ({
   label,
   placeholder,
+  placeholderTextColor,
   value,
   onChangeText,
   helperText,
@@ -72,9 +77,8 @@ export const AppInput = ({
   const [isPasswordVisible, setIsPasswordVisible] = useState(!secureTextEntry);
 
   const isFilled = value !== undefined && value !== null && String(value).length > 0;
-  const radius = radii.xl;
-  const fieldH = typeof spacing?.inputHeight === 'number' ? spacing.inputHeight : 64;
-  const size = iconBgSize ?? Math.round(fieldH * 0.62);
+  const radius = multiline ? (radii?.lg || scale(16)) : (radii?.input || scale(28));
+  const size = iconBgSize ?? scale(36);
 
   // Surface fill colors from theme
   const fillColors = isDark
@@ -83,9 +87,9 @@ export const AppInput = ({
 
   const getBorderColor = () => {
     if (error) return colors.status?.error || '#FF4B4B';
-    if (isFocused) return colors.border?.focused || (isDark ? '#FFFFFF' : '#020202');
+    if (isFocused) return colors.border?.focused || (isDark ? '#FFFFFF' : (colors.brand?.primary || '#009BA9'));
     return isFilled
-      ? (isDark ? 'rgba(255, 255, 255, 0.16)' : '#FFFFFF')
+      ? (isDark ? 'rgba(255, 255, 255, 0.16)' : '#E2E8F0')
       : (isDark ? 'rgba(255, 255, 255, 0.08)' : '#EDF0F1');
   };
 
@@ -93,9 +97,9 @@ export const AppInput = ({
     ? null
     : {
         shadowColor: colors.surface?.inputShadow || '#6FB4C2',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: isFilled ? 0.16 : 0.1,
-        shadowRadius: 12,
+        shadowOffset: { width: 0, height: verticalScale(3) },
+        shadowOpacity: isFilled ? 0.14 : 0.08,
+        shadowRadius: scale(8),
         elevation: 2,
       };
 
@@ -105,15 +109,21 @@ export const AppInput = ({
     borderRadius: size / 2,
     alignItems: 'center',
     justifyContent: 'center',
+    marginRight: spacing?.sm || scale(8),
+    borderWidth: 0,
+    overflow: 'hidden',
   };
 
   const renderIconLeft = () => {
     if (!iconLeft) return null;
 
+    const defaultGlyphColor = isDark ? '#FFFFFF' : (colors.brand?.primaryDark || '#0F4761');
     const glyph = React.isValidElement(iconLeft)
       ? React.cloneElement(iconLeft, {
           size: iconLeft.props?.size || Math.round(size * 0.5),
-          color: iconLeft.props?.color || (isDark ? '#FFFFFF' : colors.brand?.primary || '#009BA9'),
+          color: (iconLeft.props?.color && iconLeft.props.color !== '#FFFFFF' && iconLeft.props.color !== '#ffffff' && iconLeft.props.color !== '#fff')
+            ? iconLeft.props.color
+            : defaultGlyphColor,
         })
       : iconLeft;
 
@@ -177,21 +187,39 @@ export const AppInput = ({
   return (
     <View style={[styles.container, style]}>
       {label ? (
-        <AppText variant="bodyMediumMedium" colorType="primary" style={styles.label}>
+        <AppText
+          style={[
+            styles.label,
+            {
+              color: colors.text?.primary || (isDark ? '#FFFFFF' : '#0F4761'),
+              marginBottom: spacing?.xs || verticalScale(4),
+              fontSize: scaleFont(13),
+              fontFamily: fontFamilies.primaryMedium,
+            },
+          ]}
+        >
           {label}
         </AppText>
       ) : null}
 
-      <View style={[{ borderRadius: radius, opacity: 1 }, shadowStyle]}>
+      <View style={[{ borderRadius: radius }, shadowStyle]}>
         <View
           style={[
             styles.inputWrapper,
             {
               borderColor: getBorderColor(),
               borderRadius: radius,
-              paddingHorizontal: spacing?.inputPaddingHorizontal || 16,
-              height: multiline ? undefined : (spacing?.inputHeight || 64),
-              minHeight: multiline ? 100 : (spacing?.inputHeight || 64),
+              paddingHorizontal: scale(12),
+              ...(multiline
+                ? {
+                    minHeight: verticalScale(96),
+                    alignItems: 'flex-start',
+                    paddingVertical: spacing?.md || verticalScale(12),
+                  }
+                : {
+                    height: verticalScale(58),
+                    alignItems: 'center',
+                  }),
             },
             wrapperStyle,
           ]}
@@ -210,7 +238,11 @@ export const AppInput = ({
             value={value}
             onChangeText={onChangeText}
             placeholder={placeholder}
-            placeholderTextColor={colors.text?.muted || '#787878'}
+            placeholderTextColor={
+              placeholderTextColor ||
+              rest.placeholderTextColor ||
+              (isDark ? 'rgba(255, 255, 255, 0.42)' : '#8E99A4')
+            }
             secureTextEntry={secureTextEntry && !isPasswordVisible}
             multiline={multiline}
             editable={editable}
@@ -224,10 +256,23 @@ export const AppInput = ({
             }}
             style={[
               styles.textInput,
-              typography?.bodyLarge,
               {
-                color: colors.text?.primary || (isDark ? '#FFFFFF' : '#020202'),
-                textAlignVertical: multiline ? 'top' : 'center',
+                color: colors.text?.primary || (isDark ? '#FFFFFF' : '#0F4761'),
+                fontFamily: fontFamilies.primary,
+                fontSize: scaleFont(14),
+                includeFontPadding: false,
+                paddingVertical: 0,
+                ...(multiline
+                  ? {
+                      minHeight: verticalScale(68),
+                      textAlignVertical: 'top',
+                      paddingTop: 0,
+                      paddingBottom: 0,
+                    }
+                  : {
+                      height: '100%',
+                      textAlignVertical: 'center',
+                    }),
                 backgroundColor: 'transparent',
               },
               inputStyle,
@@ -245,10 +290,10 @@ export const AppInput = ({
               accessibilityLabel={isPasswordVisible ? 'Hide password' : 'Show password'}
             >
               {isPasswordVisible ? (
-                <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+                <Svg width={scale(22)} height={scale(22)} viewBox="0 0 24 24" fill="none">
                   <Path
                     d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"
-                    stroke={colors.text?.secondary || '#787878'}
+                    stroke={isDark ? 'rgba(255, 255, 255, 0.7)' : (colors.brand?.primaryDark || '#0F4761')}
                     strokeWidth="1.8"
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -257,17 +302,17 @@ export const AppInput = ({
                     cx="12"
                     cy="12"
                     r="3"
-                    stroke={colors.text?.secondary || '#787878'}
+                    stroke={isDark ? 'rgba(255, 255, 255, 0.7)' : (colors.brand?.primaryDark || '#0F4761')}
                     strokeWidth="1.8"
                     strokeLinecap="round"
                     strokeLinejoin="round"
                   />
                 </Svg>
               ) : (
-                <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+                <Svg width={scale(22)} height={scale(22)} viewBox="0 0 24 24" fill="none">
                   <Path
                     d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24M1 1l22 22"
-                    stroke={colors.text?.secondary || '#787878'}
+                    stroke={isDark ? 'rgba(255, 255, 255, 0.7)' : (colors.brand?.primaryDark || '#0F4761')}
                     strokeWidth="1.8"
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -276,7 +321,13 @@ export const AppInput = ({
               )}
             </TouchableOpacity>
           ) : iconRight ? (
-            <View style={styles.iconRight}>{iconRight}</View>
+            <View style={styles.iconRight}>
+              {React.isValidElement(iconRight)
+                ? React.cloneElement(iconRight, {
+                    color: iconRight.props?.color || (isDark ? '#FFFFFF' : (colors.brand?.primaryDark || colors.text?.secondary || '#64748B')),
+                  })
+                : iconRight}
+            </View>
           ) : null}
         </View>
       </View>
@@ -297,35 +348,28 @@ export const AppInput = ({
 const styles = StyleSheet.create({
   container: {
     width: '100%',
-    marginVertical: 6,
+    marginVertical: verticalScale(4),
   },
   label: {
-    marginBottom: 6,
-    marginLeft: 4,
+    marginLeft: scale(4),
   },
   inputWrapper: {
     flexDirection: 'row',
-    alignItems: 'center',
     borderWidth: 1,
     overflow: 'hidden',
   },
   textInput: {
     flex: 1,
-    fontSize: 14,
-    includeFontPadding: false,
-    paddingVertical: 8,
   },
-  iconLeft: {
-    marginRight: 12,
-  },
+  iconLeft: {},
   iconRight: {
-    marginLeft: 10,
+    marginLeft: scale(8),
     alignItems: 'center',
     justifyContent: 'center',
   },
   helperText: {
-    marginTop: 4,
-    marginLeft: 8,
+    marginTop: verticalScale(4),
+    marginLeft: scale(8),
   },
 });
 

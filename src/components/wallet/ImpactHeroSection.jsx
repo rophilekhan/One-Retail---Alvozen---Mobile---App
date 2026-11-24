@@ -6,108 +6,53 @@ import { scale, verticalScale, scaleFont } from '../../theme/responsive.js';
 import { fontFamilies } from '../../theme/typography.js';
 import { AppText, FieldIconBadge } from '../core/index.js';
 import { TierGemIcon, ScoreChevronRightIcon } from '../../assets/vectors/index.js';
+import { getPharmacyTierTheme } from '../../theme/tierThemes.js';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
-export const PREV_TIER = {
-  general_trade: null,
-  established: 'general_trade',
-  key_account: 'established',
-  flagship: 'key_account',
-};
-
-export const NEXT_TIER = {
-  general_trade: 'established',
-  established: 'key_account',
-  key_account: 'flagship',
-  flagship: null,
-};
-
-export const TIER_NAMES = {
-  general_trade: 'General Trade',
-  established: 'Established',
-  key_account: 'Key Account',
-  flagship: 'Flagship',
-};
-
-export const normalizeTier = (t) => {
-  if (!t) return 'established';
-  const s = String(t).toLowerCase().replace(/\s+/g, '_');
-  if (s === 'emerging' || s === 'general_trade' || s === 'general') return 'general_trade';
-  if (s === 'established') return 'established';
-  if (s === 'senior' || s === 'key_account' || s === 'key') return 'key_account';
-  if (s === 'distinguished' || s === 'flagship') return 'flagship';
-  return 'established';
-};
-
-/**
- * Per-tier, per-mode palette sampled from Figma screens:
- * - general_trade (emerging palette): Mint/Teal
- * - established (established palette): Apricot/Orange
- * - key_account (senior palette): Sky Blue
- * - flagship (distinguished palette): Purple/Lavender
- */
-const PALETTE = {
-  general_trade: {
-    light: {
-      arcStart: '#C9F1E7', arcMid: '#8ADCC6', arcEnd: '#69D2B7', glow: '#69D2B7',
-      pillText: '#4C9C88', pillBorder: 'rgba(255,255,255,0)', pillBg: '#FFFFFF',
-    },
-    dark: {
-      arcStart: '#638B82', arcMid: '#70A89B', arcEnd: '#70D4BA', glow: '#70D4BA',
-      pillText: '#7A938F', pillBorder: 'rgba(122, 147, 143, 0.25)', pillBg: '#1E2725',
-    },
-  },
-  established: {
-    light: {
-      arcStart: '#FFC9A3', arcMid: '#FF9248', arcEnd: '#FF6A00', glow: '#FF6A00',
-      pillText: '#FF6A00', pillBorder: 'rgba(255,255,255,0)', pillBg: '#FFFFFF',
-    },
-    dark: {
-      arcStart: '#99581E', arcMid: '#CA5603', arcEnd: '#E76203', glow: '#E76203',
-      pillText: '#C67F49', pillBorder: 'rgba(198, 127, 73, 0.25)', pillBg: '#2F261F',
-    },
-  },
-  key_account: {
-    light: {
-      arcStart: '#BFE2F3', arcMid: '#7DBDE0', arcEnd: '#3E97C7', glow: '#3E97C7',
-      pillText: '#0E435C', pillBorder: 'rgba(255,255,255,0)', pillBg: '#FFFFFF',
-    },
-    dark: {
-      arcStart: '#7A8686', arcMid: '#5F93A9', arcEnd: '#5BA0BF', glow: '#5BA0BF',
-      pillText: '#5E8494', pillBorder: 'rgba(94, 132, 148, 0.25)', pillBg: '#1E262B',
-    },
-  },
-  flagship: {
-    light: {
-      arcStart: '#EAD6FA', arcMid: '#BC8DE3', arcEnd: '#8F5CC0', glow: '#A06FD0',
-      pillText: '#9A6CC6', pillBorder: 'rgba(255,255,255,0)', pillBg: '#FFFFFF',
-    },
-    dark: {
-      arcStart: '#817E91', arcMid: '#9575A4', arcEnd: '#A076B5', glow: '#A076B5',
-      pillText: '#9F87A9', pillBorder: 'rgba(159, 135, 169, 0.25)', pillBg: '#29272C',
-    },
-  },
-};
 
 /**
  * ImpactHeroSection
  * Exact 1:1 port of OneRx ImpactHeroSection with dynamic arc gauge,
  * concentric track rings, tilted milestone gems, apex gem disc, and Impact Score counter.
+ * Fully driven by getPharmacyTierTheme(tier, isDark).
+ *
+ * @param {Object} props
+ * @param {string} [props.tier='key_account']
+ * @param {number} [props.score=842]
+ * @param {Function} [props.onScorePress]
+ * @param {Function} [props.onTierPillPress]
+ * @param {Function} [props.onPressScore]
+ * @param {Function} [props.onPressMilestone]
  */
 export const ImpactHeroSection = ({
-  tier = 'established',
+  tier = 'key_account',
   score = 842,
   onScorePress,
   onTierPillPress,
+  onPressScore,
+  onPressMilestone,
 }) => {
   const { isDark } = useTheme();
-  const mode = isDark ? 'dark' : 'light';
-  const normTier = normalizeTier(tier);
-  const pal = (PALETTE[normTier] || PALETTE.established)[mode];
-  const tierName = TIER_NAMES[normTier] || 'Established';
+  const handleScore = onScorePress || onPressScore;
+  const handlePill = onTierPillPress || onPressMilestone;
 
-  // Geometry
+  const tierTheme = useMemo(() => {
+    return getPharmacyTierTheme(tier, isDark);
+  }, [tier, isDark]);
+
+  const {
+    key: normTier,
+    label: tierName,
+    prevTierKey,
+    nextTierKey,
+    arcStops: pal,
+    accentColor,
+    badgeBg,
+    badgeBorder,
+    badgeText,
+  } = tierTheme;
+
+  // Geometry (arc radius / gem positions sampled from Figma)
   const svgW = SCREEN_WIDTH;
   const wrapperH = verticalScale(185);
   const svgH = verticalScale(300);
@@ -159,13 +104,10 @@ export const ImpactHeroSection = ({
 
   const domePath = `M ${L.x} ${L.y} A ${arcRadius} ${arcRadius} 0 0 1 ${R.x} ${R.y} Z`;
 
-  const gid = `${normTier}-${mode}`;
+  const gid = `${normTier}-${isDark ? 'dark' : 'light'}`;
   const progressGradId = `heroProgress-${gid}`;
-  const trackGradId = `heroTrack-${mode}`;
+  const trackGradId = `heroTrack-${isDark ? 'dark' : 'light'}`;
   const domeGradId = `heroDome-${gid}`;
-
-  const prevTier = PREV_TIER[normTier];
-  const nextTier = NEXT_TIER[normTier];
 
   const progressStops = isDark
     ? [
@@ -301,7 +243,7 @@ export const ImpactHeroSection = ({
         </Svg>
 
         {/* Previous tier milestone gem */}
-        {prevTier && (
+        {prevTierKey && (
           <View
             style={[
               styles.floatingGemWrapper,
@@ -315,12 +257,12 @@ export const ImpactHeroSection = ({
             <FieldIconBadge
               isDark={isDark}
               size={44}
-              variant={prevTier === 'general_trade' ? 'tier_emerging' : prevTier}
+              variant={prevTierKey}
               marginRight={0}
               style={styles.previousMilestoneBadge}
             >
               <View style={styles.tiltedGem}>
-                <TierGemIcon tier={prevTier} size={scale(24)} />
+                <TierGemIcon tier={prevTierKey} size={scale(24)} />
               </View>
             </FieldIconBadge>
           </View>
@@ -336,15 +278,7 @@ export const ImpactHeroSection = ({
           <FieldIconBadge
             isDark={isDark}
             size={56}
-            variant={
-              normTier === 'general_trade'
-                ? 'tier_emerging'
-                : normTier === 'key_account'
-                ? 'tier_senior'
-                : normTier === 'flagship'
-                ? 'tier_distinguished'
-                : 'tier_established'
-            }
+            variant={normTier}
             marginRight={0}
             style={styles.apexShadow}
           >
@@ -353,7 +287,7 @@ export const ImpactHeroSection = ({
         </View>
 
         {/* Next tier milestone gem */}
-        {nextTier && (
+        {nextTierKey && (
           <View
             style={[
               styles.floatingGemWrapper,
@@ -363,17 +297,11 @@ export const ImpactHeroSection = ({
             <FieldIconBadge
               isDark={isDark}
               size={44}
-              variant={
-                nextTier === 'key_account'
-                  ? 'tier_senior'
-                  : nextTier === 'flagship'
-                  ? 'tier_distinguished'
-                  : 'tier_established'
-              }
+              variant={nextTierKey}
               marginRight={0}
               style={styles.milestoneShadow}
             >
-              <TierGemIcon tier={nextTier} size={scale(24)} />
+              <TierGemIcon tier={nextTierKey} size={scale(24)} />
             </FieldIconBadge>
           </View>
         )}
@@ -382,20 +310,22 @@ export const ImpactHeroSection = ({
       <View style={styles.scoreContainer}>
         <TouchableOpacity
           activeOpacity={0.75}
-          onPress={onTierPillPress}
+          onPress={handlePill}
           style={[
             styles.tierPill,
             {
-              backgroundColor: pal.pillBg,
-              borderColor: pal.pillBorder,
+              backgroundColor: pal.pillBg || badgeBg,
+              borderColor: pal.pillBorder || badgeBorder,
               borderWidth: isDark ? 1 : 0,
-              shadowColor: isDark ? 'transparent' : pal.pillText,
-              shadowOpacity: isDark ? 0 : 0.1,
+              shadowColor: isDark ? 'transparent' : (pal.pillText || accentColor),
+              shadowOpacity: isDark ? 0 : 0.12,
               elevation: isDark ? 0 : 2,
             },
           ]}
         >
-          <AppText style={[styles.tierText, { color: pal.pillText }]}>{tierName}</AppText>
+          <AppText style={[styles.tierText, { color: pal.pillText || badgeText }]}>
+            {tierName}
+          </AppText>
         </TouchableOpacity>
 
         <View style={styles.scoreRow}>
@@ -407,13 +337,11 @@ export const ImpactHeroSection = ({
 
           <TouchableOpacity
             activeOpacity={0.8}
-            onPress={onScorePress}
+            onPress={handleScore}
             style={[
               styles.chevronTouchable,
               {
                 backgroundColor: chevronBg,
-                borderColor: chevronBorder,
-                borderWidth: isDark ? 1 : 0.5,
                 shadowColor: '#000000',
                 shadowOffset: { width: 0, height: 1 },
                 shadowOpacity: isDark ? 0 : 0.06,
@@ -428,7 +356,9 @@ export const ImpactHeroSection = ({
           </TouchableOpacity>
         </View>
 
-        <AppText style={[styles.scoreSubtitle, { color: subtitleColor }]}>IMPACT SCORE</AppText>
+        <AppText style={[styles.scoreSubtitle, { color: subtitleColor }]}>
+          PHARMACY IMPACT SCORE
+        </AppText>
       </View>
     </View>
   );
@@ -493,7 +423,7 @@ const styles = StyleSheet.create({
   tierText: {
     fontSize: scaleFont(14),
     fontFamily: fontFamilies.primaryMedium,
-    fontWeight: '500',
+    fontWeight: '600',
     letterSpacing: -0.2,
   },
   scoreRow: {

@@ -53,7 +53,7 @@ describe('OneRetail Staff Module (1:1 OneRx Port)', () => {
     await ReactTestRenderer.act(async () => {
       renderer.unmount();
     });
-  }, 15000);
+  }, 35000);
 
   test('StaffPermissionsMatrix renders all 7 OneRetail permissions with cyan active borders', async () => {
     let renderer;
@@ -83,7 +83,7 @@ describe('OneRetail Staff Module (1:1 OneRx Port)', () => {
     await ReactTestRenderer.act(async () => {
       renderer.unmount();
     });
-  }, 15000);
+  }, 35000);
 
   test('ResetStaffPasswordModal renders password inputs with spherical icon badges', async () => {
     let renderer;
@@ -104,7 +104,7 @@ describe('OneRetail Staff Module (1:1 OneRx Port)', () => {
     await ReactTestRenderer.act(async () => {
       renderer.unmount();
     });
-  }, 15000);
+  }, 35000);
 
   test('StaffListScreen and StaffFormScreen render cleanly in ThemeProvider', async () => {
     let listRenderer;

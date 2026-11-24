@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import {
   AppScreenContainer,
@@ -7,12 +7,14 @@ import {
   AppHeader,
   GlassCard,
   AppBadge,
-  AppButton,
   MetricIconDisc,
+  OfferDiscountCard,
+  DetailsChevronButton,
   AppToast,
 } from '../../components/core/index.js';
 import { useTheme } from '../../theme/index.js';
-import { scale, verticalScale } from '../../theme/responsive.js';
+import { scale, verticalScale, scaleFont } from '../../theme/responsive.js';
+import { fontFamilies } from '../../theme/typography.js';
 import { usePharmacyStore } from '../../store/usePharmacyStore.js';
 
 const DEMO_ENGAGEMENT_MODULES = [
@@ -91,7 +93,7 @@ export const EngageScreen = ({ navigation }) => {
             <Svg width={scale(24)} height={scale(24)} viewBox="0 0 24 24" fill="none">
               <Path
                 d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
-                stroke="#FFFFFF"
+                stroke={isDark ? '#FFFFFF' : '#0F4761'}
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -113,41 +115,40 @@ export const EngageScreen = ({ navigation }) => {
       </AppText>
 
       {modules.map((mod) => (
-        <GlassCard key={mod.id} style={styles.card}>
-          <View style={styles.cardHeader}>
-            <View style={{ flex: 1, paddingRight: 8 }}>
-              <AppBadge label={mod.sponsor} variant="brand" size="sm" style={{ marginBottom: 4 }} />
-              <AppText variant="titleMedium" colorType="primary">{mod.title}</AppText>
-              <AppText variant="caption" colorType="muted" style={{ marginTop: 4 }}>
+        <OfferDiscountCard
+          key={mod.id}
+          title={mod.title}
+          badgeType="OFFER"
+          subtitle={`${mod.sponsor} • ${mod.duration}`}
+          buttonText={mod.completed ? 'Completed & Credited' : 'Start Activity'}
+          onActionPress={() => !mod.completed && handleCompleteModule(mod)}
+          onCardPress={() => !mod.completed && handleCompleteModule(mod)}
+          extraInfo={
+            <View style={styles.moduleExtraWrap}>
+              <AppText style={[styles.moduleDesc, { color: isDark ? '#94A3B8' : '#64748B' }]}>
                 {mod.description}
               </AppText>
+              <View style={styles.rewardBadgesRow}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: scale(8) }}>
+                  <AppBadge label={`+${mod.piiReward} PII`} variant="accent" size="sm" />
+                  <DetailsChevronButton
+                    label="Details"
+                    onPress={() => {
+                      AppToast.show({
+                        title: mod.title,
+                        message: `${mod.description} Sponsored by ${mod.sponsor}. Duration: ${mod.duration}.`,
+                        type: 'info',
+                      });
+                    }}
+                  />
+                </View>
+                <AppText style={[styles.cashRewardText, { color: isDark ? '#38D6E5' : '#0F4761' }]}>
+                  PKR {mod.cashReward}
+                </AppText>
+              </View>
             </View>
-
-            <View style={{ alignItems: 'flex-end' }}>
-              <AppBadge label={`+${mod.piiReward} PII`} variant="accent" />
-              <AppText variant="caption" colorType="brand" style={{ marginTop: 4, fontWeight: '700' }}>
-                PKR {mod.cashReward}
-              </AppText>
-            </View>
-          </View>
-
-          <View style={[styles.cardFooter, { borderTopColor: colors.border?.subtle }]}>
-            <AppText variant="caption" colorType="muted">
-              Estimated Duration: {mod.duration}
-            </AppText>
-
-            {mod.completed ? (
-              <AppBadge label="Completed & Credited" variant="success" />
-            ) : (
-              <AppButton
-                variant="primary"
-                size="xs"
-                title="Start Activity"
-                onPress={() => handleCompleteModule(mod)}
-              />
-            )}
-          </View>
-        </GlassCard>
+          }
+        />
       ))}
 
       <View style={{ height: verticalScale(20) }} />
@@ -168,24 +169,24 @@ const styles = StyleSheet.create({
     marginTop: verticalScale(12),
     marginBottom: verticalScale(4),
   },
-  card: {
-    width: '100%',
+  moduleExtraWrap: {
     marginVertical: verticalScale(6),
-    flexDirection: 'column',
-    alignItems: 'stretch',
   },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+  moduleDesc: {
+    fontSize: scaleFont(12.5),
+    fontFamily: fontFamilies.primary,
+    lineHeight: scaleFont(17),
+    marginBottom: verticalScale(8),
   },
-  cardFooter: {
+  rewardBadgesRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    borderTopWidth: 1,
-    marginTop: verticalScale(10),
-    paddingTop: verticalScale(8),
+    justifyContent: 'space-between',
+  },
+  cashRewardText: {
+    fontSize: scaleFont(14),
+    fontFamily: fontFamilies.monoMedium,
+    fontWeight: '700',
   },
 });
 

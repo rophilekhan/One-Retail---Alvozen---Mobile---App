@@ -1,116 +1,72 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
 import { useTheme } from '../../theme/index.js';
-import { scale, verticalScale } from '../../theme/responsive.js';
+import { scale, verticalScale, scaleFont } from '../../theme/responsive.js';
+import { fontFamilies } from '../../theme/typography.js';
 import { GlassCard, AppText, AppBadge } from '../core/index.js';
+import { TerritoryBenchmarkBarChart } from './TerritoryBenchmarkBarChart.jsx';
 
 /**
  * TerritoryBenchmarkingCard - Pharmacy Performance vs. Territory Average
+ * Upgraded with Native SVG Grouped Dual-Bar Comparison Graph across:
+ * 1. Daily Rx Volume
+ * 2. SKU Fill Rate %
+ * 3. Generic Substitution Rate %
  *
  * @param {Object} props
- * @param {string} [props.territoryName='PECHS Territory']
- * @param {Object} [props.metrics]
+ * @param {string} [props.territoryName='PECHS / Tariq Road']
  */
 export const TerritoryBenchmarkingCard = ({
-  territoryName = 'PECHS Territory',
-  metrics,
+  territoryName = 'PECHS / Tariq Road',
 }) => {
   const { colors, isDark } = useTheme();
 
-  const BENCHMARKS = [
-    {
-      id: 'scans',
-      label: 'Daily Scanned Prescriptions',
-      pharmacyVal: '34 Rx/day',
-      territoryAvg: '21 Rx/day',
-      comparison: '+62% Above Avg',
-      isPositive: true,
-    },
-    {
-      id: 'substitution',
-      label: 'Generic Substitution Compliance',
-      pharmacyVal: '88%',
-      territoryAvg: '72%',
-      comparison: '+16% Above Avg',
-      isPositive: true,
-    },
-    {
-      id: 'schemes',
-      label: 'Active Scheme Adoption',
-      pharmacyVal: '92%',
-      territoryAvg: '68%',
-      comparison: '+24% Above Avg',
-      isPositive: true,
-    },
-    {
-      id: 'stockout',
-      label: 'Prescription Stock-out Rate',
-      pharmacyVal: '4.2%',
-      territoryAvg: '9.8%',
-      comparison: '5.6% Lower (Better)',
-      isPositive: true,
-    },
-  ];
-
   return (
     <GlassCard style={styles.card}>
-      {/* Header */}
+      {/* Header Row: Title & Territory Pill */}
       <View style={styles.headerRow}>
         <View style={styles.titleWrap}>
-          <AppText variant="caption" colorType="brand" style={styles.overline}>
-            COMPETITIVE BENCHMARK
+          <AppText
+            style={[
+              styles.overline,
+              { color: isDark ? '#38D6E5' : (colors.brand?.primaryDark || '#0F4761') },
+            ]}
+          >
+            TERRITORY BENCHMARK
           </AppText>
-          <AppText variant="titleMedium" colorType="primary" style={styles.title}>
-            Territory Benchmarking
+          <AppText
+            style={[
+              styles.title,
+              { color: colors.text?.primary || (isDark ? '#FFFFFF' : '#020202') },
+            ]}
+          >
+            Performance Benchmarks
           </AppText>
         </View>
 
-        <AppBadge label="Top Decile" variant="accent" size="sm" />
+        <AppBadge label={territoryName} variant="brand" size="sm" />
       </View>
 
-      <AppText variant="caption" colorType="muted" style={styles.subtext}>
-        Your store performance compared against 48 pharmacies in {territoryName}
+      <AppText
+        style={[
+          styles.subtext,
+          { color: colors.text?.secondary || (isDark ? '#94A3B8' : '#64748B') },
+        ]}
+      >
+        Real-time comparison vs 48 verified pharmacies in your assigned territory
       </AppText>
 
-      {/* Benchmarks Grid */}
-      <View style={styles.itemsWrap}>
-        {BENCHMARKS.map((item, idx) => {
-          const isLast = idx === BENCHMARKS.length - 1;
-          return (
-            <View
-              key={item.id}
-              style={[
-                styles.itemRow,
-                !isLast && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border?.subtle },
-              ]}
-            >
-              <View style={styles.itemInfo}>
-                <AppText variant="bodySmallMedium" colorType="primary">
-                  {item.label}
-                </AppText>
-                <AppText variant="caption" colorType="muted" style={{ marginTop: 2 }}>
-                  Your Store: {item.pharmacyVal} • Territory: {item.territoryAvg}
-                </AppText>
-              </View>
-
-              <AppBadge
-                label={item.comparison}
-                variant={item.isPositive ? 'success' : 'warning'}
-                size="sm"
-              />
-            </View>
-          );
-        })}
-      </View>
+      {/* SVG Grouped Dual-Bar Comparison Graph */}
+      <TerritoryBenchmarkBarChart />
     </GlassCard>
   );
 };
 
 const styles = StyleSheet.create({
   card: {
-    padding: scale(16),
     marginBottom: verticalScale(14),
+    width: '100%',
+    flexDirection: 'column',
   },
   headerRow: {
     flexDirection: 'row',
@@ -120,31 +76,27 @@ const styles = StyleSheet.create({
   },
   titleWrap: {
     flex: 1,
+    marginRight: scale(8),
   },
   overline: {
     letterSpacing: 0.8,
-    fontSize: scale(9),
+    fontSize: scaleFont(9.5),
+    fontFamily: fontFamilies.primaryBold,
     fontWeight: '700',
+    textTransform: 'uppercase',
   },
   title: {
+    fontSize: scaleFont(16),
+    fontFamily: fontFamilies.primaryMedium,
+    fontWeight: '600',
     letterSpacing: -0.2,
     marginTop: verticalScale(2),
   },
   subtext: {
-    marginBottom: verticalScale(12),
-  },
-  itemsWrap: {
-    marginTop: verticalScale(2),
-  },
-  itemRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: verticalScale(10),
-  },
-  itemInfo: {
-    flex: 1,
-    paddingRight: scale(10),
+    fontSize: scaleFont(12.5),
+    fontFamily: fontFamilies.primary,
+    marginBottom: verticalScale(14),
+    lineHeight: scaleFont(16),
   },
 });
 

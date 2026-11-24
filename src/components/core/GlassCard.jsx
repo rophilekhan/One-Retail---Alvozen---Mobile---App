@@ -5,6 +5,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import { useTheme } from '../../theme/index.js';
 import { radii } from '../../theme/radii.js';
 import { spacing } from '../../theme/spacing.js';
+import { scale, moderateScale } from '../../theme/responsive.js';
 
 const ENABLE_BLUR = Platform.OS === 'ios';
 const BLUR_AMOUNT = 2;
@@ -44,6 +45,7 @@ export const GlassCard = memo(({
   style,
   contentStyle,
   radius = radii.card,
+  noPadding = false,
 }) => {
   const { colors, isDark } = useTheme();
 
@@ -53,28 +55,25 @@ export const GlassCard = memo(({
         { top: 0.04, left: 0.015, right: 0.015, bottom: 0.05 },
         { top: 0.015, left: 0.005, right: 0.005, bottom: 0.02 },
       ]
-    : [
-        { top: 0.08, left: 0.03, right: 0.03, bottom: 0.10 },
-        { top: 0.03, left: 0.01, right: 0.01, bottom: 0.04 },
-      ];
+    : [];
 
   const frostColors = colors?.glassCard?.frost || (
     isDark
       ? ['rgba(192, 169, 255, 0.08)', 'rgba(182, 186, 229, 0.07)', 'rgba(152, 155, 168, 0.13)']
-      : ['rgba(255,255,255,0.16)', 'rgba(255,255,255,0.06)', 'rgba(255,255,255,0.13)']
+      : ['#FFFFFF', '#FFFFFF']
   );
 
   const borderProps = Platform.select({
     ios: {
       borderWidth: OUTER_W,
-      borderTopColor: colors?.glassCard?.outerTop || (isDark ? 'rgba(255,255,255,0.34)' : 'rgba(255,255,255,0.70)'),
-      borderLeftColor: colors?.glassCard?.outerLeft || (isDark ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.35)'),
-      borderRightColor: colors?.glassCard?.outerRight || (isDark ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.35)'),
-      borderBottomColor: colors?.glassCard?.outerBottom || (isDark ? 'rgba(255,255,255,0.26)' : 'rgba(255,255,255,0.60)'),
+      borderTopColor: colors?.glassCard?.outerTop || (isDark ? 'rgba(255,255,255,0.34)' : 'rgba(0, 0, 0, 0.08)'),
+      borderLeftColor: colors?.glassCard?.outerLeft || (isDark ? 'rgba(255,255,255,0.16)' : 'rgba(0, 0, 0, 0.06)'),
+      borderRightColor: colors?.glassCard?.outerRight || (isDark ? 'rgba(255,255,255,0.16)' : 'rgba(0, 0, 0, 0.06)'),
+      borderBottomColor: colors?.glassCard?.outerBottom || (isDark ? 'rgba(255,255,255,0.26)' : 'rgba(0, 0, 0, 0.08)'),
     },
     android: {
       borderWidth: 1,
-      borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.70)',
+      borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : (colors?.border?.card || 'rgba(0, 0, 0, 0.06)'),
     },
   });
 
@@ -84,12 +83,14 @@ export const GlassCard = memo(({
         styles.outer,
         {
           borderRadius: radius,
+          backgroundColor: isDark ? 'transparent' : (colors?.surface?.card || '#FFFFFF'),
         },
+        !isDark && styles.lightCardShadow,
         borderProps,
         style,
       ]}
     >
-      {ENABLE_BLUR && (
+      {ENABLE_BLUR && isDark && (
         <BlurView
           pointerEvents="none"
           style={[StyleSheet.absoluteFill, { borderRadius: radius }]}
@@ -100,19 +101,29 @@ export const GlassCard = memo(({
         />
       )}
 
-      <LinearGradient
-        pointerEvents="none"
-        colors={frostColors}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[StyleSheet.absoluteFill, { borderRadius: radius }]}
-      />
+      {isDark && (
+        <LinearGradient
+          pointerEvents="none"
+          colors={frostColors}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[StyleSheet.absoluteFill, { borderRadius: radius }]}
+        />
+      )}
 
-      {glowTheme.map((alpha, i) => (
+      {isDark && glowTheme.map((alpha, i) => (
         <GlowRing key={i} index={i} alpha={alpha} radius={radius} />
       ))}
 
-      <View style={[styles.content, contentStyle]}>{children}</View>
+      <View
+        style={[
+          styles.content,
+          noPadding && { padding: 0 },
+          contentStyle,
+        ]}
+      >
+        {children}
+      </View>
     </View>
   );
 });
@@ -123,10 +134,17 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     overflow: 'hidden',
   },
+  lightCardShadow: {
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
   content: {
     width: '100%',
     flexDirection: 'column',
-    padding: spacing.cardPadding,
+    padding: moderateScale(14),
   },
 });
 
