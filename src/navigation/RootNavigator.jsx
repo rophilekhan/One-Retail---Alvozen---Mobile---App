@@ -1,9 +1,7 @@
 import React, { useEffect } from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuthStore } from '../store/useAuthStore.js';
-import { useTheme } from '../theme/index.js';
-import { AppScreenContainer, AppText } from '../components/core/index.js';
+import { SplashScreen } from '../screens/auth/SplashScreen.jsx';
 import AuthNavigator from './AuthNavigator.jsx';
 import MainTabNavigator from './MainTabNavigator.jsx';
 
@@ -42,7 +40,6 @@ export const RootNavigator = () => {
   const isHydrated = useAuthStore((s) => s.isHydrated);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const hydrate = useAuthStore((s) => s.hydrate);
-  const { colors } = useTheme();
 
   useEffect(() => {
     hydrate();
@@ -50,23 +47,7 @@ export const RootNavigator = () => {
 
   // Splash / Loading state while hydrating encrypted storage
   if (!isHydrated) {
-    return (
-      <AppScreenContainer withAmbientGlow={true}>
-        <View style={styles.splashContainer}>
-          <AppText variant="headlineLarge" colorType="primary" style={styles.splashTitle}>
-            OneRetail
-          </AppText>
-          <AppText variant="bodyLarge" colorType="brand" style={styles.splashSubtitle}>
-            by Alvozen
-          </AppText>
-          <ActivityIndicator
-            size="large"
-            color={colors.brand?.primary || '#009BA9'}
-            style={styles.loader}
-          />
-        </View>
-      </AppScreenContainer>
-    );
+    return <SplashScreen autoNavigate={false} />;
   }
 
   return (
@@ -191,23 +172,5 @@ export const RootNavigator = () => {
     </Stack.Navigator>
   );
 };
-
-const styles = StyleSheet.create({
-  splashContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  splashTitle: {
-    letterSpacing: -0.5,
-  },
-  splashSubtitle: {
-    marginTop: 4,
-    letterSpacing: 0.5,
-  },
-  loader: {
-    marginTop: 24,
-  },
-});
 
 export default RootNavigator;

@@ -221,6 +221,11 @@ export const EarningsScreen = ({ navigation }) => {
         visible={isWithdrawModalVisible}
         onClose={() => setIsWithdrawModalVisible(false)}
         onSelectMethod={handleSelectMethod}
+        selectedMethod={selectedWithdrawMethod}
+        linkedAccounts={{
+          jazzcash: enteredAccountNumber,
+          bank: bankDetails.accountNumber,
+        }}
       />
 
       <WithdrawAccountDetailsModal
@@ -267,6 +272,7 @@ export const EarningsScreen = ({ navigation }) => {
         }}
         onContinue={handleAmountContinue}
         availableBalance="48,500"
+        minAmount={selectedWithdrawMethod?.id === 'bank' ? '2,500' : '500'}
       />
 
       <ReviewConfirmWithdrawalModal

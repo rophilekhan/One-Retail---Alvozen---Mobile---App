@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useMemo, useRef, useCallback, useEffect } from 'react';
 import { View, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Path, Circle } from 'react-native-svg';
+import Svg, { Path } from 'react-native-svg';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import LinearGradient from 'react-native-linear-gradient';
 import { useTheme } from '../../theme/index.js';
@@ -10,170 +10,230 @@ import { spacing } from '../../theme/spacing.js';
 import { radii } from '../../theme/radii.js';
 import { shadows } from '../../theme/shadows.js';
 import { scale, scaleFont, verticalScale } from '../../theme/responsive.js';
-import { AppText, AppBackButton } from '../global/index.js';
+import { AppText, AppButton } from '../core/index.js';
+import {
+  ChevronLeftSvg,
+  LocationPinIcon,
+  MapTeardropPinIcon,
+} from '../../assets/vectors/PrescriptionIcons.jsx';
 import { usePharmacyStore } from '../../store/usePharmacyStore.js';
-
-const darkMapStyle = [
-  { elementType: 'geometry', stylers: [{ color: '#1a2332' }] },
-  { elementType: 'labels.text.fill', stylers: [{ color: '#8ec3b9' }] },
-  { elementType: 'labels.text.stroke', stylers: [{ color: '#1a3646' }] },
-  { featureType: 'administrative.country', elementType: 'geometry.stroke', stylers: [{ color: '#4b687f' }] },
-  { featureType: 'landscape.man_made', elementType: 'geometry.fill', stylers: [{ color: '#141c28' }] },
-  { featureType: 'landscape.natural', elementType: 'geometry', stylers: [{ color: '#172130' }] },
-  { featureType: 'poi', elementType: 'geometry', stylers: [{ color: '#192638' }] },
-  { featureType: 'poi', elementType: 'labels.text.fill', stylers: [{ color: '#6f9ba5' }] },
-  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#1e2d42' }] },
-  { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#98a5be' }] },
-  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#255e4e' }] },
-  { featureType: 'road.highway', elementType: 'geometry.stroke', stylers: [{ color: '#1f4e41' }] },
-  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0d1522' }] },
-];
+import { DARK_MAP_STYLE, DEFAULT_COORDINATES, parseFiniteCoord } from '../../services/geocodingService.js';
 
 const FALLBACK_PHARMACIES = [
   {
     id: 1,
     name: 'Shaheen Chemist',
-    location: 'PECHS Commercial Area',
-    address: 'Plot 42-B, PECHS Commercial Area, Karachi',
+    location: 'Gulshan-e-Iqbal',
+    address: 'Plot 42-B, Block 13-A, Gulshan-e-Iqbal, Karachi',
     brands: 4,
-    distance: '0.4 km',
-    distanceKm: '0.4',
-    status: 'In Stock',
+    distance: '3.5 km',
+    distanceKm: '3.5',
+    status: 'Nearby',
     stockUnits: 40,
-    phone: '021-34567890',
-    latitude: 24.8620,
-    longitude: 67.0650,
+    latitude: 24.918,
+    longitude: 67.097,
   },
   {
     id: 2,
     name: 'Al-Noor Pharmacy',
-    location: 'Tariq Road Block 2',
-    address: '15-C, Main Tariq Road, Karachi',
+    location: 'DHA Phase 6',
+    address: '15-C, Shahbaz Commercial, DHA Phase 6, Karachi',
     brands: 4,
-    distance: '0.9 km',
-    distanceKm: '0.9',
-    status: 'In Stock',
+    distance: '5.2 km',
+    distanceKm: '5.2',
+    status: 'Distant',
     stockUnits: 25,
-    phone: '021-34567891',
-    latitude: 24.8710,
-    longitude: 67.0600,
+    latitude: 24.806,
+    longitude: 67.065,
   },
   {
     id: 3,
     name: 'Medix Pharmacy',
-    location: 'Bahadurabad Chowrangi',
-    address: 'Shop 4, Alamgir Road, Bahadurabad, Karachi',
+    location: 'Clifton, Block 5',
+    address: 'Shop 4, Boat Basin Avenue, Clifton Block 5, Karachi',
     brands: 4,
-    distance: '1.2 km',
-    distanceKm: '1.2',
-    status: 'In Stock',
+    distance: '1.8 km',
+    distanceKm: '1.8',
+    status: 'Nearby',
     stockUnits: 18,
-    phone: '021-34567892',
-    latitude: 24.8820,
-    longitude: 67.0680,
+    latitude: 24.825,
+    longitude: 67.028,
   },
   {
     id: 4,
     name: 'Habib Medical Store',
-    location: 'Sharah-e-Faisal',
-    address: 'Business Avenue, PECHS Block 6, Karachi',
+    location: 'North Nazimabad',
+    address: 'Block H, Main Shahrah-e-Sher Shah Suri, Karachi',
     brands: 4,
-    distance: '3.1 km',
-    distanceKm: '3.1',
-    status: 'Out of Stock',
-    stockUnits: 0,
-    phone: '021-34567893',
-    latitude: 24.8650,
-    longitude: 67.0780,
+    distance: '7.1 km',
+    distanceKm: '7.1',
+    status: 'Distant',
+    stockUnits: 12,
+    latitude: 24.941,
+    longitude: 67.043,
   },
 ];
 
+const resolveNearbyPharmacies = (medicine = {}) => {
+  const customList = Array.isArray(medicine?.nearbyPharmacies) ? medicine.nearbyPharmacies : [];
+  if (customList.length === 0) return FALLBACK_PHARMACIES;
+
+  return customList.map((entry, idx) => {
+    const seed = FALLBACK_PHARMACIES[idx % FALLBACK_PHARMACIES.length];
+    const distKm =
+      entry.distanceKm ||
+      (entry.distance ? String(entry.distance).split(' ')[0] : seed.distanceKm);
+    const numericDist = parseFloat(distKm);
+    const derivedStatus =
+      entry.status || (!isNaN(numericDist) && numericDist <= 4 ? 'Nearby' : 'Distant');
+
+    return {
+      ...seed,
+      ...entry,
+      id: entry.id || idx + 1,
+      name: entry.name || seed.name,
+      location: entry.location || seed.location,
+      address: entry.address || entry.location || seed.address,
+      distanceKm: distKm,
+      distance: entry.distance || `${distKm} km`,
+      status: derivedStatus,
+      stockUnits: entry.stockUnits !== undefined ? entry.stockUnits : seed.stockUnits,
+      latitude: entry.latitude || seed.latitude,
+      longitude: entry.longitude || seed.longitude,
+    };
+  });
+};
+
+/**
+ * PharmacyMapView - View 2 (Nearby Stores List) & View 3 (Store Google Map Pin)
+ * Exact 1:1 port of OneRx PharmacyMapView with reciprocal SKU Visibility gating.
+ *
+ * @param {Object} props
+ * @param {'PHARMACIES' | 'PHARMACY_MAP'} [props.viewState='PHARMACIES']
+ * @param {Object} props.selectedPharmacy
+ * @param {Function} props.setSelectedPharmacy
+ * @param {Function} props.onClose
+ * @param {Function} [props.onBack]
+ * @param {Function} props.onSetViewState
+ * @param {Function} [props.onNavigateSettings]
+ * @param {Object} [props.medicine]
+ */
 export const PharmacyMapView = ({
   viewState = 'PHARMACIES',
   selectedPharmacy,
   setSelectedPharmacy,
   onClose,
+  onBack,
   onSetViewState,
   onNavigateSettings,
   medicine = {},
-  hideHeader = false,
 }) => {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
+  const mapRef = useRef(null);
+  const isMapReadyRef = useRef(false);
   const skuVisibilityEnabled = usePharmacyStore((s) => s.skuVisibilityEnabled);
-  const pharmacies = FALLBACK_PHARMACIES;
+  const pharmacies = useMemo(() => resolveNearbyPharmacies(medicine), [medicine]);
 
-  // STEP 3: Store Location on Google Map (Map Mode)
+  const activeStore = selectedPharmacy || pharmacies[0];
+  const parsedLat = parseFiniteCoord(activeStore?.latitude);
+  const parsedLng = parseFiniteCoord(activeStore?.longitude);
+  const storeLatitude = Number.isFinite(parsedLat) ? parsedLat : DEFAULT_COORDINATES.latitude;
+  const storeLongitude = Number.isFinite(parsedLng) ? parsedLng : DEFAULT_COORDINATES.longitude;
+
+  const targetRegion = useMemo(
+    () => ({
+      latitude: storeLatitude,
+      longitude: storeLongitude,
+      latitudeDelta: DEFAULT_COORDINATES.latitudeDelta,
+      longitudeDelta: DEFAULT_COORDINATES.longitudeDelta,
+    }),
+    [storeLatitude, storeLongitude]
+  );
+
+  const handleMapReady = useCallback(() => {
+    isMapReadyRef.current = true;
+    if (mapRef.current?.animateToRegion) {
+      mapRef.current.animateToRegion(targetRegion, 300);
+    }
+  }, [targetRegion]);
+
+  useEffect(() => {
+    if (viewState === 'PHARMACY_MAP' && isMapReadyRef.current && mapRef.current?.animateToRegion) {
+      mapRef.current.animateToRegion(targetRegion, 300);
+    }
+  }, [viewState, targetRegion]);
+
+  // VIEW 3: Google Map Pin View
   if (viewState === 'PHARMACY_MAP') {
-    const activeStore = selectedPharmacy || pharmacies[0];
-    const storeLatitude = activeStore.latitude || 24.8620;
-    const storeLongitude = activeStore.longitude || 67.0650;
 
     return (
       <View style={styles.viewContainer}>
-        {/* Exact OneRx Header: LEFT Back Button, NO right-side cross X button */}
-        {!hideHeader && (
-          <View style={styles.header}>
-            <AppBackButton
-              onPress={() => onSetViewState('PHARMACIES')}
-              size={scale(36)}
-              style={styles.backBtn}
-            />
-            <View style={{ flex: 1, marginLeft: spacing.sm }}>
-              <AppText style={[styles.headerTitle, { color: colors.text.primary }]}>
-                {activeStore.name}
-              </AppText>
-              <AppText style={[styles.headerSubtitle, { color: colors.text.secondary }]}>
-                {activeStore.distance} • {activeStore.status}
-              </AppText>
-            </View>
+        {/* Exact OneRx Header: Left < back chevron + Title "Nearby Brand Availability" */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => onSetViewState?.('PHARMACIES')}
+            style={styles.backBtn}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+          >
+            <ChevronLeftSvg size={20} color={colors.text.primary} strokeWidth={2} />
+          </TouchableOpacity>
+          <View style={styles.headerTitleCol}>
+            <AppText style={[styles.headerTitle, { color: colors.text.primary }]} numberOfLines={1}>
+              Nearby Brand Availability
+            </AppText>
           </View>
-        )}
+        </View>
 
-        {/* Live Google Map */}
+        {/* Rounded Google Map Card (height: verticalScale(230), borderRadius: radii.card) */}
         <View style={styles.mapWrapper}>
           <MapView
+            ref={mapRef}
             provider={PROVIDER_GOOGLE}
             style={styles.map}
-            customMapStyle={isDark ? darkMapStyle : []}
-            initialRegion={{
-              latitude: storeLatitude,
-              longitude: storeLongitude,
-              latitudeDelta: 0.035,
-              longitudeDelta: 0.035,
-            }}
+            customMapStyle={isDark ? DARK_MAP_STYLE : []}
+            initialRegion={targetRegion}
+            onMapReady={handleMapReady}
           >
-            <Marker coordinate={{ latitude: storeLatitude, longitude: storeLongitude }} anchor={{ x: 0.5, y: 1 }}>
+            <Marker
+              coordinate={{ latitude: storeLatitude, longitude: storeLongitude }}
+              anchor={{ x: 0.5, y: 1 }}
+            >
               <View style={styles.markerContainer}>
-                <View style={[styles.markerTooltip, { backgroundColor: colors.surface.tooltip || (isDark ? '#262626' : '#000000') }]}>
-                  <AppText style={[styles.markerTooltipText, { color: colors.text.inverse || '#FFFFFF' }]}>
-                    {activeStore.name}
+                <View style={[styles.markerTooltip, { backgroundColor: colors.surface.tooltip }]}>
+                  <AppText style={[styles.markerTooltipText, { color: colors.text.inverse }]}>
+                    {activeStore.name || 'Shaheen Chemist'}
                   </AppText>
                 </View>
-                <View style={[styles.markerTriangle, { borderTopColor: colors.surface.tooltip || (isDark ? '#262626' : '#000000') }]} />
-
+                <View
+                  style={[
+                    styles.markerTriangle,
+                    { borderTopColor: colors.surface.tooltip },
+                  ]}
+                />
                 <View style={styles.pinWrapper}>
-                  <Svg width={scale(28)} height={scale(34)} viewBox="0 0 28 34" fill="none">
-                    <Path
-                      d="M14 0C6.26801 0 0 6.26801 0 14C0 24.5 14 34 14 34C14 34 28 24.5 28 14C28 6.26801 21.732 0 14 0Z"
-                      fill={colors.brand.accent || '#FB6B03'}
-                    />
-                    <Circle cx="14" cy="13" r="4.5" fill="#FFFFFF" />
-                  </Svg>
+                  <MapTeardropPinIcon
+                    pinColor={colors.brand.accent}
+                    dotColor={colors.cta.sliderKnob}
+                    width={28}
+                    height={34}
+                  />
                 </View>
               </View>
             </Marker>
           </MapView>
         </View>
 
-        {/* Address Pill */}
+        {/* Address Pill Card Below Map */}
         <View
           style={[
             styles.addressPill,
             {
               backgroundColor: colors.surface.card,
               borderColor: colors.border.subtle,
-              ...(isDark ? (shadows?.dark?.none || shadows?.none) : (shadows?.light?.subtle || shadows?.subtle)),
+              ...(isDark ? shadows.dark.none : shadows.light.subtle),
             },
           ]}
         >
@@ -181,24 +241,19 @@ export const PharmacyMapView = ({
             colors={
               Array.isArray(colors.input?.iconTeal)
                 ? colors.input.iconTeal
-                : colors.input?.iconTeal
-                ? [colors.input.iconTeal, '#FFFFFF']
-                : ['#DAF3F7', '#EAF7F8']
+                : [colors.input?.iconTeal || colors.pastel.teal, colors.surface.card]
             }
             start={{ x: 0, y: 0 }}
             end={{ x: 0, y: 1 }}
-            style={[styles.addressIconBadge, { borderWidth: isDark ? 1 : 0, borderColor: colors.border.subtle }]}
+            style={[
+              styles.addressIconBadge,
+              {
+                borderWidth: isDark ? 1 : 0,
+                borderColor: colors.border.subtle,
+              },
+            ]}
           >
-            <Svg width={scale(28)} height={scale(28)} viewBox="0 0 24 24" fill="none">
-              <Path
-                d="M12 21C16 16.8 19 12.8 19 9C19 5.13401 15.866 2 12 2C8.13401 2 5 5.13401 5 9C5 12.8 8 16.8 12 21Z"
-                stroke={colors.text.primary}
-                strokeWidth="1.3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <Circle cx="12" cy="9" r="3" stroke={colors.text.primary} strokeWidth="1.3" />
-            </Svg>
+            <LocationPinIcon size={24} color={colors.text.primary} strokeWidth={1.3} />
           </LinearGradient>
 
           <AppText style={[styles.addressText, { color: colors.text.primary }]} numberOfLines={1}>
@@ -206,22 +261,23 @@ export const PharmacyMapView = ({
           </AppText>
         </View>
 
-        <View style={{ flex: 1 }} />
+        <View style={styles.flexSpacer} />
 
+        {/* Full-Width Rounded Pill Close Button */}
         <SafeAreaView edges={['bottom']} style={styles.bottomBarContainer}>
           <TouchableOpacity
             style={[
               styles.footerCloseBtn,
               {
-                borderColor: colors.border.subtle,
-                backgroundColor: colors.surface.modalCloseBtnBg || 'transparent',
-                marginBottom: insets.bottom > 0 ? spacing.xs : spacing.md,
+                borderColor: colors.border.modalCloseBtn,
+                backgroundColor: colors.surface.modalCloseBtnBg,
+                marginBottom: insets.bottom > 0 ? spacing.xs : spacing.sm,
               },
             ]}
             onPress={onClose}
             activeOpacity={0.7}
           >
-            <AppText style={[styles.closeBtnText, { color: colors.text.modalCloseBtn || colors.brand?.primary }]}>
+            <AppText style={[styles.closeBtnText, { color: colors.text.modalCloseBtn }]}>
               Close
             </AppText>
           </TouchableOpacity>
@@ -230,36 +286,53 @@ export const PharmacyMapView = ({
     );
   }
 
-  // STEP 2: Nearby Medical Stores (List Mode)
+  // VIEW 2: Nearby Brand Availability Pharmacy List
+  const handleBackFromList = () => {
+    if (onBack) {
+      onBack();
+    } else if (onSetViewState) {
+      onSetViewState('SEARCH');
+    } else {
+      onClose?.();
+    }
+  };
+
   return (
     <View style={styles.viewContainer}>
-      {!hideHeader && (
-        <View style={styles.header}>
-          <AppBackButton
-            onPress={() => onSetViewState('BRANDS')}
-            size={scale(36)}
-            style={styles.backBtn}
-          />
-          <View style={{ flex: 1, marginLeft: spacing.sm }}>
-            <AppText style={[styles.headerTitle, { color: colors.text.primary }]}>
-              Nearby Brand Availability
-            </AppText>
-            <AppText style={[styles.headerSubtitle, { color: colors.text.secondary }]}>
-              3 Nearby Pharmacies • In Stock
-            </AppText>
-          </View>
+      {/* Exact OneRx Header: Left < back chevron + Title + Subtitle */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          onPress={handleBackFromList}
+          style={styles.backBtn}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
+          <ChevronLeftSvg size={20} color={colors.text.primary} strokeWidth={2} />
+        </TouchableOpacity>
+        <View style={styles.headerTitleCol}>
+          <AppText style={[styles.headerTitle, { color: colors.text.primary }]} numberOfLines={1}>
+            Nearby Brand Availability
+          </AppText>
+          <AppText
+            style={[styles.headerSubtitleMono, { color: colors.text.secondary }]}
+            numberOfLines={1}
+          >
+            4 Nearby Pharmacies • 7 Distant Pharmacies
+          </AppText>
         </View>
-      )}
+      </View>
 
       {skuVisibilityEnabled ? (
         <ScrollView
+          style={styles.flexList}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.listContent}
           keyboardShouldPersistTaps="handled"
         >
           {pharmacies.map((pharma) => {
-            const isAvail = pharma.status === 'In Stock';
-            const statusColor = isAvail ? (colors.status?.available || '#49C88F') : (colors.brand?.accent || '#FB6B03');
+            const isNearby = pharma.status === 'Nearby' || pharma.status === 'In Stock';
+            const statusColor = isNearby ? colors.status.available : colors.brand.accent;
             const distanceStr = String(pharma?.distance ?? '0 km');
             const distNum = distanceStr.includes(' ') ? distanceStr.split(' ')[0] : distanceStr;
 
@@ -269,48 +342,57 @@ export const PharmacyMapView = ({
                 style={[
                   styles.pharmacyCard,
                   {
-                    backgroundColor: colors.surface.inputSecondary || (isDark ? 'rgba(255,255,255,0.05)' : '#F5F6F8'),
-                    borderColor: colors.border.card || colors.border.subtle,
-                    borderWidth: 1,
+                    backgroundColor: colors.surface.inputSecondary,
+                    borderColor: colors.border.card,
                   },
                 ]}
                 activeOpacity={0.7}
                 onPress={() => {
                   setSelectedPharmacy(pharma);
-                  onSetViewState('PHARMACY_MAP');
+                  onSetViewState?.('PHARMACY_MAP', pharma);
                 }}
               >
-                <View style={{ flex: 1, marginRight: spacing.md }}>
+                <View style={styles.pharmacyInfoCol}>
                   <AppText style={[styles.pharmacyName, { color: colors.text.primary }]}>
                     {pharma.name}
                   </AppText>
                   <View style={styles.detailsRow}>
-                    <AppText style={[styles.statusText, { color: statusColor }]}>{pharma.status}</AppText>
-                    <AppText style={[styles.dotSeparator, { color: colors.text.tertiary }]}>{' • '}</AppText>
-                    <AppText style={[styles.detailText, { color: colors.text.secondary }]}>{pharma.location}</AppText>
-                    <AppText style={[styles.dotSeparator, { color: colors.text.tertiary }]}>{' • '}</AppText>
-                    <AppText style={[styles.detailText, { color: colors.text.secondary }]}>
-                      {pharma.stockUnits ? `${pharma.stockUnits} units` : `${pharma.brands} Brands`}
+                    <AppText style={[styles.statusText, { color: statusColor }]}>
+                      {pharma.status}
+                    </AppText>
+                    <AppText style={[styles.dotSeparator, { color: colors.text.tertiary }]}>
+                      {' • '}
+                    </AppText>
+                    <AppText
+                      style={[styles.detailText, { color: colors.text.secondary }]}
+                      numberOfLines={1}
+                    >
+                      {pharma.location}
                     </AppText>
                   </View>
                 </View>
+
                 <View style={styles.distanceContainer}>
-                  <AppText style={[styles.distanceNumber, { color: colors.text.primary }]}>{distNum}</AppText>
-                  <AppText style={[styles.distanceUnit, { color: colors.text.secondary }]}>km</AppText>
+                  <AppText style={[styles.distanceNumber, { color: colors.text.primary }]}>
+                    {distNum}
+                  </AppText>
+                  <AppText style={[styles.distanceUnit, { color: colors.text.secondary }]}>
+                    km
+                  </AppText>
                 </View>
               </TouchableOpacity>
             );
           })}
         </ScrollView>
       ) : (
-        /* Reciprocal SKU Visibility Gate Notice */
-        <ScrollView contentContainerStyle={styles.listContent}>
+        /* Reciprocal SKU Visibility Gate Notice when SKU Visibility is OFF in Settings */
+        <ScrollView style={styles.flexList} contentContainerStyle={styles.listContent}>
           <View
             style={[
               styles.privacyCard,
               {
-                backgroundColor: isDark ? 'rgba(251, 107, 3, 0.08)' : 'rgba(251, 107, 3, 0.05)',
-                borderColor: colors.brand?.accent || '#FB6B03',
+                backgroundColor: colors.status.accentBg,
+                borderColor: colors.brand.accent,
               },
             ]}
           >
@@ -318,14 +400,14 @@ export const PharmacyMapView = ({
               <Svg width={scale(32)} height={scale(32)} viewBox="0 0 24 24" fill="none">
                 <Path
                   d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"
-                  stroke={colors.brand?.accent || '#FB6B03'}
+                  stroke={colors.brand.accent}
                   strokeWidth="1.8"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />
                 <Path
                   d="M12 8v4M12 16h.01"
-                  stroke={colors.brand?.accent || '#FB6B03'}
+                  stroke={colors.brand.accent}
                   strokeWidth="2"
                   strokeLinecap="round"
                 />
@@ -337,39 +419,37 @@ export const PharmacyMapView = ({
             </AppText>
 
             <AppText style={[styles.privacyBody, { color: colors.text.secondary }]}>
-              SKU Visibility is turned OFF in Store Settings. Under OneRetail's reciprocal policy, pharmacies that do not share stock visibility cannot view real-time stock at neighboring pharmacies.
+              Nearby pharmacy SKU availability is hidden because SKU Visibility is turned OFF in Settings. Enable SKU Visibility to share stock and unlock nearby availability.
             </AppText>
 
-            <TouchableOpacity
-              activeOpacity={0.8}
+            <AppButton
+              variant="primary"
+              size="md"
+              title="Enable SKU Visibility in Settings"
               onPress={() => {
                 onClose?.();
                 onNavigateSettings?.();
               }}
-              style={[styles.settingsBtn, { backgroundColor: colors.brand?.primary || '#009BA9' }]}
-            >
-              <AppText style={styles.settingsBtnText}>
-                Go to Settings & Enable SKU Visibility
-              </AppText>
-            </TouchableOpacity>
+            />
           </View>
         </ScrollView>
       )}
 
+      {/* Full-Width Rounded Pill Close Button */}
       <SafeAreaView edges={['bottom']} style={styles.bottomBarContainer}>
         <TouchableOpacity
           style={[
             styles.footerCloseBtn,
             {
-              borderColor: colors.border.subtle,
-              backgroundColor: colors.surface.modalCloseBtnBg || 'transparent',
-              marginBottom: insets.bottom > 0 ? spacing.xs : spacing.md,
+              borderColor: colors.border.modalCloseBtn,
+              backgroundColor: colors.surface.modalCloseBtnBg,
+              marginBottom: insets.bottom > 0 ? spacing.xs : spacing.sm,
             },
           ]}
           onPress={onClose}
           activeOpacity={0.7}
         >
-          <AppText style={[styles.closeBtnText, { color: colors.text.modalCloseBtn || colors.brand?.primary }]}>
+          <AppText style={[styles.closeBtnText, { color: colors.text.modalCloseBtn }]}>
             Close
           </AppText>
         </TouchableOpacity>
@@ -379,12 +459,41 @@ export const PharmacyMapView = ({
 };
 
 const styles = StyleSheet.create({
-  viewContainer: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.lg },
-  backBtn: { justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { ...typography.titleMedium },
-  headerSubtitle: { ...typography.caption, marginTop: spacing.xxs },
-  listContent: { paddingBottom: spacing.lg },
+  viewContainer: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+    flexShrink: 0,
+  },
+  backBtn: {
+    padding: spacing.xs,
+  },
+  headerTitleCol: {
+    flex: 1,
+    marginLeft: spacing.sm,
+  },
+  headerTitle: {
+    ...typography.titleMedium,
+  },
+  headerSubtitleMono: {
+    fontFamily: fontFamilies.mono,
+    fontVariant: ['tabular-nums'],
+    fontSize: scaleFont(11.5),
+    lineHeight: scaleFont(15),
+    marginTop: spacing.xxs,
+  },
+  flexList: {
+    flex: 1,
+  },
+  flexSpacer: {
+    flex: 1,
+  },
+  listContent: {
+    paddingBottom: spacing.lg,
+  },
   pharmacyCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -392,24 +501,53 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.screenHorizontal,
     paddingVertical: spacing.lg,
     borderRadius: radii.card,
+    borderWidth: 1,
     marginBottom: spacing.md,
   },
-  pharmacyName: { ...typography.bodyMedium, marginBottom: spacing.xxs },
-  detailsRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'nowrap' },
-  statusText: { ...typography.badge },
-  dotSeparator: { ...typography.bodyMediumMedium },
-  detailText: { ...typography.caption },
-  distanceContainer: { flexDirection: 'row', alignItems: 'baseline' },
+  pharmacyInfoCol: {
+    flex: 1,
+    marginRight: spacing.md,
+  },
+  pharmacyName: {
+    ...typography.bodyMedium,
+    fontFamily: fontFamilies.primaryMedium,
+    fontWeight: '600',
+    marginBottom: spacing.xxs,
+  },
+  detailsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'nowrap',
+  },
+  statusText: {
+    ...typography.badge,
+  },
+  dotSeparator: {
+    ...typography.bodyMediumMedium,
+  },
+  detailText: {
+    ...typography.caption,
+  },
+  distanceContainer: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    flexShrink: 0,
+  },
   distanceNumber: {
     fontSize: scaleFont(24),
     lineHeight: scaleFont(24),
-    fontFamily: fontFamilies.mono,
-    fontWeight: '400',
+    fontFamily: fontFamilies.monoMedium,
+    fontWeight: '500',
+    fontVariant: ['tabular-nums'],
   },
-  distanceUnit: { ...typography.caption, marginLeft: spacing.xs },
+  distanceUnit: {
+    ...typography.caption,
+    marginLeft: spacing.xs,
+  },
   bottomBarContainer: {
     width: '100%',
     paddingTop: spacing.xs,
+    flexShrink: 0,
   },
   footerCloseBtn: {
     borderWidth: 1,
@@ -418,17 +556,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: spacing.xs,
-    marginBottom: spacing.xs,
   },
-  closeBtnText: { ...typography.bodyLarge },
+  closeBtnText: {
+    ...typography.bodyLarge,
+  },
   mapWrapper: {
-    height: verticalScale(280),
+    height: verticalScale(230),
     borderRadius: radii.card,
     overflow: 'hidden',
     marginBottom: spacing.md,
   },
-  map: { width: '100%', height: '100%' },
-  markerContainer: { alignItems: 'center' },
+  map: {
+    width: '100%',
+    height: verticalScale(230),
+  },
+  markerContainer: {
+    alignItems: 'center',
+  },
   markerTooltip: {
     paddingHorizontal: spacing.md,
     paddingVertical: verticalScale(7),
@@ -437,7 +581,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     ...shadows.light.tooltip,
   },
-  markerTooltipText: { ...typography.captionMedium },
+  markerTooltipText: {
+    ...typography.captionMedium,
+  },
   markerTriangle: {
     width: 0,
     height: 0,
@@ -451,7 +597,10 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     marginTop: -verticalScale(0.5),
   },
-  pinWrapper: { alignItems: 'center', marginTop: verticalScale(1) },
+  pinWrapper: {
+    alignItems: 'center',
+    marginTop: verticalScale(1),
+  },
   addressPill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -469,7 +618,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     overflow: 'hidden',
   },
-  addressText: { flex: 1, marginLeft: spacing.sm, ...typography.bodyMedium },
+  addressText: {
+    flex: 1,
+    marginLeft: spacing.sm,
+    ...typography.bodyMedium,
+  },
   privacyCard: {
     padding: scale(18),
     borderRadius: scale(18),
@@ -495,19 +648,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: scale(10),
     marginBottom: verticalScale(14),
-  },
-  settingsBtn: {
-    height: verticalScale(44),
-    paddingHorizontal: scale(16),
-    borderRadius: radii.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  settingsBtnText: {
-    color: '#FFFFFF',
-    fontSize: scaleFont(13),
-    fontFamily: fontFamilies.primaryBold,
-    fontWeight: '700',
   },
 });
 

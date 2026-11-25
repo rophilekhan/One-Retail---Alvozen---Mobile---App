@@ -5,6 +5,7 @@ export { EarningTransactionCard } from './EarningTransactionCard.jsx';
 export { PointTransactionCard } from './PointTransactionCard.jsx';
 export { FilterTabs } from './FilterTabs.jsx';
 export { SelectWithdrawMethodModal } from './SelectWithdrawMethodModal.jsx';
+export { WithdrawMethodOptionCard, WITHDRAW_OPTIONS } from './WithdrawMethodOptionCard.jsx';
 export { WithdrawAccountDetailsModal } from './WithdrawAccountDetailsModal.jsx';
 export { WithdrawBankTransferModal } from './WithdrawBankTransferModal.jsx';
 export { EnterWithdrawalAmountModal } from './EnterWithdrawalAmountModal.jsx';

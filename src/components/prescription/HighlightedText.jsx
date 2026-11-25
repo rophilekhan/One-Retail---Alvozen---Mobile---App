@@ -1,36 +1,44 @@
 import React from 'react';
+import { StyleSheet } from 'react-native';
 import { fontFamilies } from '../../theme/typography.js';
-import { AppText } from '../core/index.js';
+import { radii } from '../../theme/radii.js';
+import { AppText } from '../global/index.js';
 import { useTheme } from '../../theme/index.js';
 
 /**
- * HighlightedText
- * Exact 1:1 port of OneRx HighlightedText with live search text highlighting.
+ * HighlightedText - Exact OneRx Search Substring Highlighting
+ * Highlights matched query substrings using colors.brand.accent (#fb6b03).
  *
  * @param {Object} props
  * @param {string} [props.text]
+ * @param {string} [props.medicineName]
+ * @param {string} [props.name]
  * @param {string} [props.searchQuery]
+ * @param {string} [props.highlight]
  * @param {Object} [props.style]
  * @param {string} [props.highlightColor]
  */
 export const HighlightedText = ({
-  text = '',
+  text,
+  medicineName,
+  name,
   searchQuery = '',
+  highlight = '',
   style,
   highlightColor,
 }) => {
-  const { colors, isDark } = useTheme();
-  const query = (searchQuery || '').trim();
-  const effectiveHighlight =
-    highlightColor || (isDark ? 'rgba(251, 107, 3, 0.38)' : 'rgba(251, 107, 3, 0.22)');
+  const { colors } = useTheme();
+  const fullText = text || medicineName || name || '';
+  const query = (searchQuery || highlight || '').trim();
+  const effectiveHighlight = highlightColor || colors.brand.accent;
 
-  if (!query || !text) {
-    return <AppText style={style}>{text}</AppText>;
+  if (!query || !fullText) {
+    return <AppText style={style}>{fullText}</AppText>;
   }
 
   const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const regex = new RegExp(`(${escaped})`, 'gi');
-  const parts = text.split(regex);
+  const parts = fullText.split(regex);
 
   return (
     <AppText style={style}>
@@ -42,13 +50,10 @@ export const HighlightedText = ({
               key={index}
               style={[
                 style,
+                styles.matchedSpan,
                 {
                   backgroundColor: effectiveHighlight,
-                  color: isDark ? '#FFFFFF' : '#0F172A',
-                  fontFamily: fontFamilies.primaryBold,
-                  fontWeight: '700',
-                  borderRadius: 2,
-                  overflow: 'hidden',
+                  color: colors.cta.sliderKnob,
                 },
               ]}
             >
@@ -65,5 +70,14 @@ export const HighlightedText = ({
     </AppText>
   );
 };
+
+const styles = StyleSheet.create({
+  matchedSpan: {
+    fontFamily: fontFamilies.primaryBold,
+    fontWeight: '700',
+    borderRadius: radii.xs,
+    overflow: 'hidden',
+  },
+});
 
 export default HighlightedText;

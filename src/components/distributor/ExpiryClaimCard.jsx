@@ -55,6 +55,7 @@ export const ExpiryClaimCard = ({ claim, onApprove, onDetails, style }) => {
               {
                 color: colors.brand?.accent || '#FB6B03',
                 fontFamily: fontFamilies.monoMedium || 'DMMono-Medium',
+                fontVariant: ['tabular-nums'],
               },
             ]}
           >
@@ -80,6 +81,7 @@ export const ExpiryClaimCard = ({ claim, onApprove, onDetails, style }) => {
               {
                 color: colors.text?.secondary || (isDark ? '#94A3B8' : '#64748B'),
                 fontFamily: fontFamilies.monoRegular || 'DMMono-Regular',
+                fontVariant: ['tabular-nums'],
               },
             ]}
             numberOfLines={1}
@@ -124,7 +126,7 @@ export const ExpiryClaimCard = ({ claim, onApprove, onDetails, style }) => {
           <AppText
             style={[
               styles.metricValue,
-              { color: colors.text?.primary || (isDark ? '#FFFFFF' : '#020202'), fontFamily: fontFamilies.monoMedium || 'DMMono-Medium' },
+              { color: colors.text?.primary || (isDark ? '#FFFFFF' : '#020202'), fontFamily: fontFamilies.monoMedium || 'DMMono-Medium', fontVariant: ['tabular-nums'] },
             ]}
             numberOfLines={1}
           >
@@ -154,7 +156,7 @@ export const ExpiryClaimCard = ({ claim, onApprove, onDetails, style }) => {
           <AppText
             style={[
               styles.metricValue,
-              { color: colors.text?.primary || (isDark ? '#FFFFFF' : '#020202'), fontFamily: fontFamilies.monoMedium || 'DMMono-Medium' },
+              { color: colors.text?.primary || (isDark ? '#FFFFFF' : '#020202'), fontFamily: fontFamilies.monoMedium || 'DMMono-Medium', fontVariant: ['tabular-nums'] },
             ]}
             numberOfLines={1}
           >
@@ -184,7 +186,7 @@ export const ExpiryClaimCard = ({ claim, onApprove, onDetails, style }) => {
           <AppText
             style={[
               styles.metricValue,
-              { color: colors.brand?.accent || '#FB6B03', fontFamily: fontFamilies.monoMedium || 'DMMono-Medium' },
+              { color: colors.brand?.accent || '#FB6B03', fontFamily: fontFamilies.monoMedium || 'DMMono-Medium', fontVariant: ['tabular-nums'] },
             ]}
             numberOfLines={1}
           >

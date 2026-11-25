@@ -31,7 +31,7 @@ describe('OneRetail Exact Ported OneRx Prescription Builder Components', () => {
           <OptionPills
             options={['Generic', 'Therapeutic Segment', 'Brand']}
             selected="Generic"
-            onSelect={() => {}}
+            onSelect={() => { }}
           />
           <HighlightedText text="Glucophage SR 500mg" searchQuery="Glucophage" />
         </ThemeProvider>
@@ -78,15 +78,15 @@ describe('OneRetail Exact Ported OneRx Prescription Builder Components', () => {
         <ThemeProvider initialMode="light">
           <BrandsModal
             visible={true}
-            onClose={() => {}}
+            onClose={() => { }}
             medicine={mockMedicine}
-            onSelectBrand={() => {}}
+            onSelectBrand={() => { }}
           />
           <MedicineBrandsView
             medicine={mockMedicine}
-            onClose={() => {}}
-            onSetViewState={() => {}}
-            onSelectBrand={() => {}}
+            onClose={() => { }}
+            onSetViewState={() => { }}
+            onSelectBrand={() => { }}
           />
         </ThemeProvider>
       );
@@ -104,9 +104,9 @@ describe('OneRetail Exact Ported OneRx Prescription Builder Components', () => {
       renderer = ReactTestRenderer.create(
         <ThemeProvider initialMode="dark">
           <MedicineSearchView
-            onClose={() => {}}
-            onSetViewState={() => {}}
-            onSelectMedicine={() => {}}
+            onClose={() => { }}
+            onSetViewState={() => { }}
+            onSelectMedicine={() => { }}
             tabs={['Generic', 'Therapeutic Segment', 'Brand']}
           />
         </ThemeProvider>
@@ -127,8 +127,8 @@ describe('OneRetail Exact Ported OneRx Prescription Builder Components', () => {
         <ThemeProvider initialMode="dark">
           <PharmacyMapView
             viewState="PHARMACIES"
-            onClose={() => {}}
-            onSetViewState={() => {}}
+            onClose={() => { }}
+            onSetViewState={() => { }}
           />
         </ThemeProvider>
       );
@@ -146,9 +146,9 @@ describe('OneRetail Exact Ported OneRx Prescription Builder Components', () => {
         <ThemeProvider initialMode="light">
           <PharmacyMapView
             viewState="PHARMACIES"
-            onClose={() => {}}
-            onSetViewState={() => {}}
-            onNavigateSettings={() => {}}
+            onClose={() => { }}
+            onSetViewState={() => { }}
+            onNavigateSettings={() => { }}
           />
         </ThemeProvider>
       );
@@ -156,6 +156,36 @@ describe('OneRetail Exact Ported OneRx Prescription Builder Components', () => {
     expect(renderer).toBeDefined();
     await ReactTestRenderer.act(async () => {
       renderer.unmount();
+    });
+
+    // 3. With viewState = PHARMACY_MAP (Google MapView renders with explicit height & onMapReady)
+    usePharmacyStore.setState({ skuVisibilityEnabled: true });
+    let mapRenderer;
+    await ReactTestRenderer.act(async () => {
+      mapRenderer = ReactTestRenderer.create(
+        <ThemeProvider initialMode="dark">
+          <PharmacyMapView
+            viewState="PHARMACY_MAP"
+            selectedPharmacy={{
+              id: 1,
+              name: 'Shaheen Chemist',
+              address: 'Gulshan-e-Iqbal, Karachi',
+              latitude: 24.918,
+              longitude: 67.097,
+            }}
+            onClose={() => { }}
+            onSetViewState={() => { }}
+          />
+        </ThemeProvider>
+      );
+    });
+    const rxMap = mapRenderer.root.find((node) => typeof node.props?.onMapReady === 'function');
+    expect(rxMap.props.initialRegion.latitude).toBe(24.918);
+    expect(rxMap.props.initialRegion.longitude).toBe(67.097);
+    expect(rxMap.props.style.height).toBeGreaterThan(0);
+
+    await ReactTestRenderer.act(async () => {
+      mapRenderer.unmount();
     });
   });
 
@@ -166,8 +196,8 @@ describe('OneRetail Exact Ported OneRx Prescription Builder Components', () => {
         <ThemeProvider initialMode="dark">
           <SelectMedicineModal
             visible={true}
-            onClose={() => {}}
-            onSelectMedicine={() => {}}
+            onClose={() => { }}
+            onSelectMedicine={() => { }}
           />
         </ThemeProvider>
       );
@@ -207,12 +237,12 @@ describe('OneRetail Exact Ported OneRx Prescription Builder Components', () => {
           <MedicationCard
             index={1}
             item={genericItem}
-            onPressBrands={() => {}}
+            onPressBrands={() => { }}
           />
           <MedicationCard
             index={2}
             item={unavailableBrandItem}
-            onPressPharmacies={() => {}}
+            onPressPharmacies={() => { }}
           />
         </ThemeProvider>
       );
@@ -382,8 +412,8 @@ describe('OneRetail Exact Ported OneRx Prescription Builder Components', () => {
         <ThemeProvider initialMode="light">
           <PharmacyMapView
             visible={true}
-            onClose={() => {}}
-            onNavigateSettings={() => {}}
+            onClose={() => { }}
+            onNavigateSettings={() => { }}
           />
         </ThemeProvider>
       );
@@ -452,11 +482,11 @@ describe('OneRetail Exact Ported OneRx Prescription Builder Components', () => {
     });
     expect(brandNameNode.length).toBeGreaterThan(0);
 
-    // Tap Available tag to navigate to Step 2 ('stores')
+    // Tap In Stock / Available tag to navigate to Step 2 ('stores')
     const availableTags = root.findAll((node) => {
       if (!node.props || !node.props.children) return false;
       const c = Array.isArray(node.props.children) ? node.props.children.join('') : String(node.props.children);
-      return c.includes('Available');
+      return c.includes('In Stock') || c.includes('Available');
     });
     expect(availableTags.length).toBeGreaterThan(0);
 
@@ -466,7 +496,7 @@ describe('OneRetail Exact Ported OneRx Prescription Builder Components', () => {
         tagTouchable = tagTouchable.parent;
       }
       if (tagTouchable && tagTouchable.props && tagTouchable.props.onPress) {
-        tagTouchable.props.onPress({ stopPropagation: () => {} });
+        tagTouchable.props.onPress({ stopPropagation: () => { } });
       }
     });
 

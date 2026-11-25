@@ -234,11 +234,13 @@ const styles = StyleSheet.create({
   pointsTextMono: {
     fontSize: scaleFont(18),
     fontFamily: fontFamilies.mono,
+    fontVariant: ['tabular-nums'],
     letterSpacing: -0.3,
   },
   ptsTextMono: {
     fontSize: scaleFont(12),
     fontFamily: fontFamilies.mono,
+    fontVariant: ['tabular-nums'],
     marginLeft: scale(2),
   },
   arrowText: {
@@ -254,6 +256,7 @@ const styles = StyleSheet.create({
   currencyTextMono: {
     fontSize: scaleFont(12),
     fontFamily: fontFamilies.mono,
+    fontVariant: ['tabular-nums'],
   },
 });
 

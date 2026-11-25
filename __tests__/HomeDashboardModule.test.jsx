@@ -14,6 +14,7 @@ import {
 import { HomeDashboardScreen, UploadClosingDataScreen } from '../src/screens/home/index.js';
 import { PharmacyProfileScreen } from '../src/screens/profile/PharmacyProfileScreen.jsx';
 import { ImpactWalletScreen } from '../src/screens/wallet/ImpactWalletScreen.jsx';
+import { SettingsScreen } from '../src/screens/settings/SettingsScreen.jsx';
 import { FloatingBottomBar } from '../src/components/core/index.js';
 import { usePharmacyStore } from '../src/store/usePharmacyStore.js';
 
@@ -163,7 +164,18 @@ describe('HomeDashboard Module - OneRx Architecture Match', () => {
   });
 
   test('renders PharmacyProfileScreen and ImpactWalletScreen cleanly', async () => {
-    const mockNav = { navigate: jest.fn(), goBack: jest.fn() };
+    const mockNav = { navigate: jest.fn(), goBack: jest.fn(), canGoBack: () => true };
+    usePharmacyStore.getState().resetPharmacy();
+    usePharmacyStore.setState({
+      name: { name: 'City Meds Pharmacy' },
+      territory: { id: 'default', name: 'PECHS / Tariq Road, Karachi', isDefault: true },
+      ownerUsername: { username: 'dr.shahzad_rx' },
+      pharmacyCode: 'ALV-KHI-0142',
+      address: 'Plot 42-B, Commercial Area, Block 6, PECHS, Karachi',
+      locationPin: { latitude: 24.8615, longitude: 67.0734 },
+      dsl: { number: '05-42-01992', expiryDate: '31 Dec 2027', imageUri: 'mock_dsl.jpg' },
+    });
+
     for (const mode of ['light', 'dark']) {
       let renderer;
       await ReactTestRenderer.act(async () => {
@@ -175,7 +187,27 @@ describe('HomeDashboard Module - OneRx Architecture Match', () => {
         );
       });
 
-      expect(renderer).toBeDefined();
+      const treeText = JSON.stringify(renderer.toJSON());
+      expect(treeText).toContain('City Meds Pharmacy');
+      expect(treeText).toContain('PECHS / Tariq Road, Karachi');
+      expect(treeText).toContain('Composite PII Score');
+      expect(treeText).toContain('Regulatory Licenses');
+      expect(treeText).toContain('Pharmacy Location');
+      expect(treeText).toContain('24.86150, 67.07340');
+      expect(treeText).toContain('View');
+
+      const mapNodes = renderer.root.findAll(
+        (node) => typeof node.props?.onMapReady === 'function' && node.props?.scrollEnabled === false
+      );
+      expect(mapNodes.length).toBeGreaterThan(0);
+      expect(mapNodes[0].props.region).toBeUndefined();
+      expect(Array.isArray(mapNodes[0].props.customMapStyle)).toBe(true);
+      if (mode === 'light') {
+        expect(mapNodes[0].props.customMapStyle).toEqual([]);
+      } else {
+        expect(mapNodes[0].props.customMapStyle.length).toBeGreaterThan(0);
+      }
+
       await ReactTestRenderer.act(async () => {
         renderer.unmount();
       });
@@ -240,6 +272,40 @@ describe('HomeDashboard Module - OneRx Architecture Match', () => {
 
     await ReactTestRenderer.act(async () => {
       renderer.unmount();
+    });
+  });
+
+  test('renders SettingsScreen cleanly in Light & Dark modes when pharmacy.territory is an object', async () => {
+    const mockNav = { navigate: jest.fn(), goBack: jest.fn(), canGoBack: () => true };
+    usePharmacyStore.getState().resetPharmacy();
+    usePharmacyStore.setState({
+      territory: { id: 'default', name: 'PECHS / Tariq Road, Karachi', isDefault: true },
+    });
+
+    let lightRenderer;
+    await ReactTestRenderer.act(async () => {
+      lightRenderer = ReactTestRenderer.create(
+        <ThemeProvider initialMode="light">
+          <SettingsScreen navigation={mockNav} />
+        </ThemeProvider>
+      );
+    });
+    expect(JSON.stringify(lightRenderer.toJSON())).toContain('PECHS / Tariq Road, Karachi');
+    await ReactTestRenderer.act(async () => {
+      lightRenderer.unmount();
+    });
+
+    let darkRenderer;
+    await ReactTestRenderer.act(async () => {
+      darkRenderer = ReactTestRenderer.create(
+        <ThemeProvider initialMode="dark">
+          <SettingsScreen navigation={mockNav} />
+        </ThemeProvider>
+      );
+    });
+    expect(JSON.stringify(darkRenderer.toJSON())).toContain('PECHS / Tariq Road, Karachi');
+    await ReactTestRenderer.act(async () => {
+      darkRenderer.unmount();
     });
   });
 });

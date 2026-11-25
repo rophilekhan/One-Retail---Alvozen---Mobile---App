@@ -191,6 +191,7 @@ export const LicenseUploadCard = ({
         value={licenseNumber}
         onChangeText={onNumberChangeHandler}
         autoCapitalize="characters"
+        isMono={true}
         iconTone="teal"
         iconLeft={<IdCardOutlineIcon size={scale(18)} color={colors.text.primary} />}
         style={{ width: '100%', marginVertical: 0 }}
@@ -242,8 +243,9 @@ export const LicenseUploadCard = ({
                   color: isDateFilled
                     ? colors.text.primary
                     : (isDark ? '#94A3B8' : '#9CA3AF'),
-                  fontFamily: isDateFilled ? fontFamilies.primaryMedium : fontFamilies.primaryRegular,
-                  fontWeight: isDateFilled ? '600' : '400',
+                  fontFamily: isDateFilled ? fontFamilies.monoMedium : fontFamilies.primaryRegular,
+                  fontWeight: isDateFilled ? '500' : '400',
+                  ...(isDateFilled ? { fontVariant: ['tabular-nums'] } : null),
                 },
               ]}
             >

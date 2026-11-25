@@ -152,7 +152,7 @@ export const TerritoryAnalyticsCard = ({
         <AppText
           style={[
             styles.mainCount,
-            { color: isDark ? '#FFFFFF' : '#020202', fontFamily: fontFamilies.monoMedium || 'DMMono-Medium' },
+            { color: isDark ? '#FFFFFF' : '#020202', fontFamily: fontFamilies.mono || 'DMMono-Regular' },
           ]}
         >
           {selectedDay ? selectedDay.count : currentConfig.heroCount}
@@ -310,6 +310,7 @@ const styles = StyleSheet.create({
   mainCount: {
     fontFamily: 'DMMono-Regular',
     fontWeight: '400',
+    fontVariant: ['tabular-nums'],
     fontSize: scaleFont(56),
     lineHeight: verticalScale(48),
     letterSpacing: -1.4,
@@ -344,6 +345,7 @@ const styles = StyleSheet.create({
   growthText: {
     fontFamily: 'DMMono-Medium',
     fontWeight: '500',
+    fontVariant: ['tabular-nums'],
     fontSize: scaleFont(11),
     lineHeight: scaleFont(12),
     letterSpacing: -0.6,
@@ -400,6 +402,7 @@ const styles = StyleSheet.create({
   },
   popoverText: {
     fontFamily: 'DMMono-Medium',
+    fontVariant: ['tabular-nums'],
     fontSize: scaleFont(12),
     lineHeight: verticalScale(12),
     color: '#FFFFFF',
@@ -455,6 +458,7 @@ const styles = StyleSheet.create({
   },
   pointsCount: {
     fontFamily: 'DMMono-Regular',
+    fontVariant: ['tabular-nums'],
     fontSize: scaleFont(24),
     lineHeight: verticalScale(24),
     marginRight: scale(8),

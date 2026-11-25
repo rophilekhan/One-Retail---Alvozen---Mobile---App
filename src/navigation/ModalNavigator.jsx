@@ -9,6 +9,10 @@ import {
   AppBadge,
   AppToast,
 } from '../components/core/index.js';
+import {
+  WithdrawMethodOptionCard,
+  WITHDRAW_OPTIONS,
+} from '../components/wallet/index.js';
 import { useDispenseStore } from '../store/useDispenseStore.js';
 import { useStaffStore, PERMISSIONS } from '../store/useStaffStore.js';
 import { usePharmacyStore } from '../store/usePharmacyStore.js';
@@ -56,12 +60,14 @@ export const CashoutWithdrawModalScreen = ({ navigation }) => {
   const [bankName, setBankName] = useState('Meezan Bank');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const minRequired = channel === 'BANK' ? 2500 : 500;
+
   const handleSubmit = () => {
     const numAmt = Number(amount);
-    if (!numAmt || numAmt <= 0 || numAmt > walletBalance) {
+    if (!numAmt || numAmt < minRequired || numAmt > walletBalance) {
       AppToast.show({
         title: 'Invalid Amount',
-        message: `Please enter an amount up to available balance PKR ${walletBalance.toLocaleString()}.`,
+        message: `Please enter an amount between PKR ${minRequired.toLocaleString()} and PKR ${walletBalance.toLocaleString()}.`,
         type: 'warning',
       });
       return;
@@ -102,12 +108,6 @@ export const CashoutWithdrawModalScreen = ({ navigation }) => {
     }, 600);
   };
 
-  const CHANNELS = [
-    { id: 'EASYPAISA', label: 'EasyPaisa' },
-    { id: 'JAZZCASH', label: 'JazzCash' },
-    { id: 'BANK', label: 'Bank Transfer' },
-  ];
-
   return (
     <AppModal
       visible={true}
@@ -118,34 +118,25 @@ export const CashoutWithdrawModalScreen = ({ navigation }) => {
     >
       <View style={styles.modalContent}>
         <AppText variant="caption" colorType="muted" style={{ marginBottom: 12 }}>
-          Available Balance: PKR {walletBalance.toLocaleString()} (Tax WHT 1% applicable)
+          Available:{' '}
+          <AppText variant="monoSmall" colorType="brand">
+            PKR {walletBalance.toLocaleString()}
+          </AppText>
+          {' '}• Min:{' '}
+          <AppText variant="monoSmall" colorType="brand">
+            PKR {minRequired.toLocaleString()}
+          </AppText>
+          {' '}(WHT 1%)
         </AppText>
 
-        <View style={styles.channelRow}>
-          {CHANNELS.map((ch) => (
-            <TouchableOpacity
-              key={ch.id}
-              onPress={() => setChannel(ch.id)}
-              style={[
-                styles.channelChip,
-                {
-                  borderColor: channel === ch.id ? colors.brand?.primary : colors.border?.subtle,
-                  backgroundColor:
-                    channel === ch.id
-                      ? isDark
-                        ? 'rgba(0, 155, 169, 0.2)'
-                        : 'rgba(0, 155, 169, 0.1)'
-                      : 'transparent',
-                },
-              ]}
-            >
-              <AppText
-                variant="captionMedium"
-                colorType={channel === ch.id ? 'brand' : 'muted'}
-              >
-                {ch.label}
-              </AppText>
-            </TouchableOpacity>
+        <View style={styles.channelsStack}>
+          {WITHDRAW_OPTIONS.map((opt) => (
+            <WithdrawMethodOptionCard
+              key={opt.id}
+              option={opt}
+              isSelected={channel === opt.channelKey}
+              onPress={(selectedOpt) => setChannel(selectedOpt.channelKey)}
+            />
           ))}
         </View>
 
@@ -154,6 +145,7 @@ export const CashoutWithdrawModalScreen = ({ navigation }) => {
           value={amount}
           onChangeText={setAmount}
           keyboardType="number-pad"
+          isMono={true}
         />
 
         {channel === 'BANK' && (
@@ -171,6 +163,7 @@ export const CashoutWithdrawModalScreen = ({ navigation }) => {
           onChangeText={setAccountNumber}
           keyboardType="number-pad"
           placeholder={channel === 'BANK' ? 'PK00MEZN0000000000000000' : '03001234567'}
+          isMono={true}
         />
 
         <AppInput
@@ -519,18 +512,9 @@ const styles = StyleSheet.create({
   modalContent: {
     paddingBottom: verticalScale(16),
   },
-  channelRow: {
-    flexDirection: 'row',
+  channelsStack: {
     marginBottom: verticalScale(12),
-    gap: scale(8),
-  },
-  channelChip: {
-    flex: 1,
-    borderWidth: 1,
-    paddingVertical: verticalScale(8),
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: scale(8),
+    gap: verticalScale(8),
   },
   dispenseItem: {
     flexDirection: 'row',

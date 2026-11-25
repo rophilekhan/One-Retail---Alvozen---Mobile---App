@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useTheme } from '../../theme/index.js';
+import { fontFamilies } from '../../theme/typography.js';
 import { scale, verticalScale, scaleFont } from '../../theme/responsive.js';
 import {
   AppModal,
@@ -204,7 +205,7 @@ export const WithdrawBankTransferModal = ({
               >
                 <BankOfficialIcon
                   size={scale(18)}
-                  color={isDark ? '#FFFFFF' : '#020202'}
+                  color={isDark ? colors.text.primary : colors.brand.primaryDark}
                 />
               </View>
               <AppText
@@ -352,10 +353,14 @@ export const WithdrawBankTransferModal = ({
                 onFocus={() => setActiveField('num')}
                 onBlur={() => setActiveField(null)}
                 placeholder="Account No. / IBAN"
-                placeholderTextColor={isDark ? '#94A3B8' : '#9CA3AF'}
+                placeholderTextColor={colors.text.inputPlaceholder}
                 style={[
                   styles.textInput,
-                  { color: colors.text.primary },
+                  {
+                    color: colors.text.primary,
+                    fontFamily: accountNumber.length > 0 ? fontFamilies.monoMedium : fontFamilies.primaryRegular,
+                    ...(accountNumber.length > 0 ? { fontVariant: ['tabular-nums'] } : null),
+                  },
                 ]}
               />
             </View>
@@ -398,10 +403,14 @@ export const WithdrawBankTransferModal = ({
                 onFocus={() => setActiveField('ntn')}
                 onBlur={() => setActiveField(null)}
                 placeholder="Pharmacy NTN (e.g. 7819204-5)"
-                placeholderTextColor={isDark ? '#94A3B8' : '#9CA3AF'}
+                placeholderTextColor={colors.text.inputPlaceholder}
                 style={[
                   styles.textInput,
-                  { color: colors.text.primary },
+                  {
+                    color: colors.text.primary,
+                    fontFamily: ntnNumber.length > 0 ? fontFamilies.monoMedium : fontFamilies.primaryRegular,
+                    ...(ntnNumber.length > 0 ? { fontVariant: ['tabular-nums'] } : null),
+                  },
                 ]}
               />
             </View>

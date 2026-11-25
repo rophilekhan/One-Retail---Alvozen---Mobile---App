@@ -434,9 +434,10 @@ const styles = StyleSheet.create({
   scoreNumber: {
     fontSize: scaleFont(62),
     lineHeight: scaleFont(68),
-    fontFamily: fontFamilies.primaryMedium,
+    fontFamily: fontFamilies.monoMedium,
     fontWeight: '500',
     letterSpacing: -1,
+    fontVariant: ['tabular-nums'],
   },
   chevronTouchable: {
     width: scale(24),

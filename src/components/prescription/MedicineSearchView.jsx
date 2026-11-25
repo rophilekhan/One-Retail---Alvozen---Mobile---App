@@ -1,229 +1,520 @@
-import React, { useState } from 'react';
-import { View, TouchableOpacity, StyleSheet, ScrollView, TextInput, Keyboard } from 'react-native';
-import Svg, { Path, Circle } from 'react-native-svg';
+import React, { useState, useMemo } from 'react';
+import {
+  View,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  TextInput,
+  Keyboard,
+} from 'react-native';
 import { useTheme } from '../../theme/index.js';
-import { fontFamilies, typography } from '../../theme/typography.js';
+import { fontFamilies } from '../../theme/typography.js';
 import { spacing } from '../../theme/spacing.js';
 import { radii } from '../../theme/radii.js';
 import { scale, verticalScale, scaleFont } from '../../theme/responsive.js';
-import { AppText, AppBackButton } from '../global/index.js';
-import { SearchIconSvg } from '../../assets/vectors/index.js';
+import { AppText } from '../global/index.js';
+import {
+  SearchIconSvg,
+  CloseIconSvg,
+  ClearCircleIconSvg,
+  ChevronRightSvg,
+  ChevronDown,
+} from '../../assets/vectors/PrescriptionIcons.jsx';
 import { HighlightedText } from './HighlightedText.jsx';
+import { OptionPills } from './OptionPills.jsx';
 
+const DEFAULT_GENERICS = [
+  {
+    id: 'g1',
+    genericId: 'gen_metformin_500',
+    genericName: 'Metformin 500mg',
+    name: 'Metformin 500mg',
+    type: 'Diabetes management',
+    segment: 'Endocrine / Diabetes',
+    brands: 4,
+    tp: 135,
+    mrp: 160,
+    mappedBrands: [
+      {
+        brandId: 'b_glucophage_500',
+        brand: 'Sanofi Aventis',
+        name: 'Glucophage SR',
+        brandName: 'Glucophage SR',
+        strength: '500mg',
+        tp: 135,
+        mrp: 160,
+        isAvailable: true,
+        activeScheme: '10+1 Bonus',
+      },
+      {
+        brandId: 'b_glycomet_500',
+        brand: 'USV Pharma',
+        name: 'Glycomet GP',
+        brandName: 'Glycomet GP',
+        strength: '500mg',
+        tp: 120,
+        mrp: 145,
+        isAvailable: true,
+        activeScheme: '5% Trade Off',
+      },
+      {
+        brandId: 'b_obimet_500',
+        brand: 'Cipla Ltd',
+        name: 'Obimet SR',
+        brandName: 'Obimet SR',
+        strength: '500mg',
+        tp: 110,
+        mrp: 130,
+        isAvailable: false,
+        activeScheme: null,
+      },
+      {
+        brandId: 'b_cetapin_500',
+        brand: 'Sun Pharma',
+        name: 'Cetapin XR',
+        brandName: 'Cetapin XR',
+        strength: '500mg',
+        tp: 140,
+        mrp: 170,
+        isAvailable: true,
+        activeScheme: null,
+      },
+    ],
+  },
+  {
+    id: 'g2',
+    genericId: 'gen_omeprazole_20',
+    genericName: 'Omeprazole 20mg Capsule',
+    name: 'Omeprazole 20mg Capsule',
+    type: 'Proton pump inhibitor',
+    segment: 'Gastroenterology',
+    brands: 4,
+    tp: 135,
+    mrp: 160,
+    mappedBrands: [
+      {
+        brandId: 'b_risek_20',
+        brand: 'Getz Pharma Ltd',
+        name: 'Risek 20mg',
+        brandName: 'Risek 20mg',
+        strength: '20mg',
+        tp: 135,
+        mrp: 160,
+        isAvailable: true,
+        activeScheme: '12+1 Bonus',
+      },
+      {
+        brandId: 'b_omega_20',
+        brand: 'Ferozsons Laboratories',
+        name: 'Omega 20mg',
+        brandName: 'Omega 20mg',
+        strength: '20mg',
+        tp: 120,
+        mrp: 145,
+        isAvailable: true,
+        activeScheme: '5% Rebate',
+      },
+      {
+        brandId: 'b_omee_20',
+        brand: 'Searle Company Ltd',
+        name: 'Omee 20mg',
+        brandName: 'Omee 20mg',
+        strength: '20mg',
+        tp: 110,
+        mrp: 130,
+        isAvailable: false,
+        activeScheme: null,
+      },
+    ],
+  },
+  {
+    id: 'g3',
+    genericId: 'gen_coamox_625',
+    genericName: 'Co-Amoxiclav 625mg',
+    name: 'Co-Amoxiclav 625mg',
+    type: 'Broad-spectrum antibiotic',
+    segment: 'Anti-Infective / Antibiotic',
+    brands: 3,
+    tp: 235,
+    mrp: 275,
+    mappedBrands: [
+      {
+        brandId: 'b_curam_625',
+        brand: 'Sandoz / Novartis',
+        name: 'Curam 625mg',
+        brandName: 'Curam 625mg',
+        strength: '625mg',
+        tp: 235,
+        mrp: 275,
+        isAvailable: true,
+        activeScheme: '10+1 Free',
+      },
+      {
+        brandId: 'b_clavet_625',
+        brand: 'Getz Pharma Ltd',
+        name: 'Clavet 625mg',
+        brandName: 'Clavet 625mg',
+        strength: '625mg',
+        tp: 225,
+        mrp: 265,
+        isAvailable: true,
+        activeScheme: '5% Trade Off',
+      },
+    ],
+  },
+  {
+    id: 'g4',
+    genericId: 'gen_para_caf',
+    genericName: 'Paracetamol + Caffeine',
+    name: 'Paracetamol + Caffeine',
+    type: 'Analgesic / Antipyretic',
+    segment: 'Pain Management & NSAIDs',
+    brands: 3,
+    tp: 75,
+    mrp: 90,
+    mappedBrands: [
+      {
+        brandId: 'alt_disprin_extra',
+        brand: 'Reckitt Benckiser',
+        name: 'Disprin Extra',
+        brandName: 'Disprin Extra',
+        strength: '500mg/65mg',
+        tp: 75,
+        mrp: 90,
+        isAvailable: true,
+        activeScheme: '10+1 Bonus',
+      },
+      {
+        brandId: 'alt_calpol_plus',
+        brand: 'GSK Pakistan',
+        name: 'Calpol Plus',
+        brandName: 'Calpol Plus',
+        strength: '500mg/65mg',
+        tp: 80,
+        mrp: 95,
+        isAvailable: true,
+        activeScheme: null,
+      },
+      {
+        brandId: 'alt_febril_extra',
+        brand: 'Martin Dow Ltd',
+        name: 'Febril Extra',
+        brandName: 'Febril Extra',
+        strength: '500mg/65mg',
+        tp: 70,
+        mrp: 85,
+        isAvailable: true,
+        activeScheme: '5% Rebate',
+      },
+    ],
+  },
+  {
+    id: 'g5',
+    genericId: 'gen_metoprolol_50',
+    genericName: 'Metoprolol 50mg',
+    name: 'Metoprolol 50mg',
+    type: 'Cardiovascular / Beta blocker',
+    segment: 'Cardiovascular / Antihypertensive',
+    brands: 2,
+    tp: 210,
+    mrp: 245,
+    mappedBrands: [
+      {
+        brandId: 'b_betaloc_50',
+        brand: 'AstraZeneca',
+        name: 'Betaloc 50mg',
+        brandName: 'Betaloc 50mg',
+        strength: '50mg',
+        tp: 220,
+        mrp: 260,
+        isAvailable: true,
+        activeScheme: null,
+      },
+      {
+        brandId: 'b_mepressor_50',
+        brand: 'Getz Pharma Ltd',
+        name: 'Mepressor 50mg',
+        brandName: 'Mepressor 50mg',
+        strength: '50mg',
+        tp: 180,
+        mrp: 215,
+        isAvailable: true,
+        activeScheme: '12+1 Free',
+      },
+    ],
+  },
+];
+
+const DEFAULT_SEGMENTS = [
+  {
+    id: 'ts1',
+    genericId: 'seg_diabetes',
+    genericName: 'Endocrine / Diabetes',
+    name: 'Endocrine / Diabetes',
+    type: 'Metformin • Sitagliptin • Glimepiride',
+    topMolecules: 'Metformin, Sitagliptin, Glimepiride',
+    brands: 18,
+    tp: 135,
+    mrp: 160,
+    mappedBrands: [
+      {
+        brandId: 'b_glucophage_500',
+        brand: 'Sanofi Aventis',
+        name: 'Glucophage SR',
+        brandName: 'Glucophage SR',
+        strength: '500mg',
+        tp: 135,
+        mrp: 160,
+        isAvailable: true,
+        activeScheme: '10+1 Bonus',
+      },
+      {
+        brandId: 'b_gluuvia_100',
+        brand: 'MSD Pharma',
+        name: 'Gluuvia 100mg',
+        brandName: 'Gluuvia 100mg',
+        strength: '100mg',
+        tp: 450,
+        mrp: 520,
+        isAvailable: true,
+        activeScheme: '5% Rebate',
+      },
+      {
+        brandId: 'b_gluaryl_2',
+        brand: 'Sanofi Aventis',
+        name: 'Gluaryl 2mg',
+        brandName: 'Gluaryl 2mg',
+        strength: '2mg',
+        tp: 180,
+        mrp: 210,
+        isAvailable: true,
+        activeScheme: null,
+      },
+    ],
+  },
+  {
+    id: 'ts2',
+    genericId: 'seg_antibiotic',
+    genericName: 'Anti-Infective / Antibiotic',
+    name: 'Anti-Infective / Antibiotic',
+    type: 'Co-Amoxiclav • Ciprofloxacin • Azithromycin',
+    topMolecules: 'Co-Amoxiclav, Ciprofloxacin, Azithromycin',
+    brands: 24,
+    tp: 235,
+    mrp: 275,
+    mappedBrands: [
+      {
+        brandId: 'b_curam_625',
+        brand: 'Sandoz / Novartis',
+        name: 'Curam 625mg',
+        brandName: 'Curam 625mg',
+        strength: '625mg',
+        tp: 235,
+        mrp: 275,
+        isAvailable: true,
+        activeScheme: '10+1 Free',
+      },
+      {
+        brandId: 'b_clavet_625',
+        brand: 'Getz Pharma Ltd',
+        name: 'Clavet 625mg',
+        brandName: 'Clavet 625mg',
+        strength: '625mg',
+        tp: 225,
+        mrp: 265,
+        isAvailable: true,
+        activeScheme: '5% Trade Off',
+      },
+    ],
+  },
+  {
+    id: 'ts3',
+    genericId: 'seg_gastro',
+    genericName: 'Gastroenterology',
+    name: 'Gastroenterology',
+    type: 'Omeprazole • Esomeprazole • Famotidine',
+    topMolecules: 'Omeprazole, Esomeprazole, Famotidine',
+    brands: 14,
+    tp: 135,
+    mrp: 160,
+    mappedBrands: [
+      {
+        brandId: 'b_risek_20',
+        brand: 'Getz Pharma Ltd',
+        name: 'Risek 20mg',
+        brandName: 'Risek 20mg',
+        strength: '20mg',
+        tp: 135,
+        mrp: 160,
+        isAvailable: true,
+        activeScheme: '12+1 Bonus',
+      },
+      {
+        brandId: 'b_omega_20',
+        brand: 'Ferozsons Laboratories',
+        name: 'Omega 20mg',
+        brandName: 'Omega 20mg',
+        strength: '20mg',
+        tp: 120,
+        mrp: 145,
+        isAvailable: true,
+        activeScheme: '5% Rebate',
+      },
+    ],
+  },
+  {
+    id: 'ts4',
+    genericId: 'seg_pain',
+    genericName: 'Pain Management & NSAIDs',
+    name: 'Pain Management & NSAIDs',
+    type: 'Paracetamol + Caffeine • Ibuprofen • Diclofenac',
+    topMolecules: 'Paracetamol + Caffeine, Ibuprofen, Diclofenac',
+    brands: 20,
+    tp: 75,
+    mrp: 90,
+    mappedBrands: [
+      {
+        brandId: 'alt_disprin_extra',
+        brand: 'Reckitt Benckiser',
+        name: 'Disprin Extra',
+        brandName: 'Disprin Extra',
+        strength: '500mg/65mg',
+        tp: 75,
+        mrp: 90,
+        isAvailable: true,
+        activeScheme: '10+1 Bonus',
+      },
+      {
+        brandId: 'alt_calpol_plus',
+        brand: 'GSK Pakistan',
+        name: 'Calpol Plus',
+        brandName: 'Calpol Plus',
+        strength: '500mg/65mg',
+        tp: 80,
+        mrp: 95,
+        isAvailable: true,
+        activeScheme: null,
+      },
+    ],
+  },
+  {
+    id: 'ts5',
+    genericId: 'seg_cardio',
+    genericName: 'Cardiovascular / Antihypertensive',
+    name: 'Cardiovascular / Antihypertensive',
+    type: 'Metoprolol • Amlodipine • Losartan',
+    topMolecules: 'Metoprolol, Amlodipine, Losartan',
+    brands: 16,
+    tp: 210,
+    mrp: 245,
+    mappedBrands: [
+      {
+        brandId: 'b_betaloc_50',
+        brand: 'AstraZeneca',
+        name: 'Betaloc 50mg',
+        brandName: 'Betaloc 50mg',
+        strength: '50mg',
+        tp: 220,
+        mrp: 260,
+        isAvailable: true,
+        activeScheme: null,
+      },
+      {
+        brandId: 'b_mepressor_50',
+        brand: 'Getz Pharma Ltd',
+        name: 'Mepressor 50mg',
+        brandName: 'Mepressor 50mg',
+        strength: '50mg',
+        tp: 180,
+        mrp: 215,
+        isAvailable: true,
+        activeScheme: '12+1 Free',
+      },
+    ],
+  },
+];
+
+/**
+ * MedicineSearchView - View 1 (Select Medicine / Substitution Search)
+ * Exact 1:1 port of OneRx MedicineSearchView Figma design using strictly useTheme() tokens.
+ *
+ * @param {Object} props
+ * @param {string} [props.title='Select Medicine']
+ * @param {Array} [props.addedMedicines]
+ * @param {Function} props.onClose
+ * @param {Function} props.onSetViewState
+ * @param {Function} [props.onSelectMedicine]
+ * @param {string[]} [props.tabs]
+ */
 export const MedicineSearchView = ({
+  title = 'Select Medicine',
   addedMedicines = [],
   onClose,
   onSetViewState,
   onSelectMedicine,
-  tabs = ['Generic', 'Therapeutic Segment', 'Brand'],
+  tabs = ['Generic', 'Therapeutic Segment'],
 }) => {
-  const { colors, isDark } = useTheme();
+  const { colors, shadows, isDark } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState(tabs[0] || 'Generic');
 
-  // Exact Brand items matching OneRx
-  const allMedicines = [
-    {
-      id: 'm1',
-      brand: 'Merck Pharma',
-      name: 'Glucophage',
-      form: 'Tablet',
-      generic: 'Metformin 500mg',
-      use: 'Blood sugar control',
-      segment: 'Endocrine / Diabetes',
-      tp: 135,
-      mrp: 160,
-      points: 1000,
-      availableColor: '#EA580C',
-      availableBg: '#FFF3E8',
-      activeScheme: '10+1 Bonus',
-      isAvailable: true,
-    },
-    {
-      id: 'm2',
-      brand: 'MSD Pharma',
-      name: 'Gluuvia',
-      form: 'Tablet',
-      generic: 'Sitagliptin 100mg',
-      use: 'DPP-4 inhibitor',
-      segment: 'Endocrine / Diabetes',
-      tp: 450,
-      mrp: 520,
-      points: 750,
-      availableColor: '#49C88F',
-      availableBg: '#E6F8EF',
-      activeScheme: '5% Rebate',
-      isAvailable: true,
-    },
-    {
-      id: 'm3',
-      brand: 'Sanofi Aventis',
-      name: 'Gluaryl',
-      form: 'Tablet',
-      generic: 'Glimepiride 2mg',
-      use: 'Insulin stimulant',
-      segment: 'Endocrine / Diabetes',
-      tp: 180,
-      mrp: 210,
-      points: 1500,
-      availableColor: '#49C88F',
-      availableBg: '#E6F8EF',
-      activeScheme: null,
-      isAvailable: true,
-    },
-    {
-      id: 'm4',
-      brand: 'Boehringer Ingelheim',
-      name: 'Gludiance',
-      form: 'Tablet',
-      generic: 'Empagliflozin 10mg',
-      use: 'SGLT2 inhibitor',
-      segment: 'Cardio-Renal',
-      tp: 720,
-      mrp: 840,
-      points: 500,
-      availableColor: '#49C88F',
-      availableBg: '#E6F8EF',
-      activeScheme: null,
-      isAvailable: true,
-    },
-    {
-      id: 'm5',
-      brand: 'GSK Pakistan',
-      name: 'Augmentin 625mg',
-      form: 'Tablet',
-      generic: 'Co-Amoxiclav 625mg',
-      use: 'Broad-spectrum antibiotic',
-      segment: 'Anti-Infective',
-      tp: 240,
-      mrp: 280,
-      points: 800,
-      availableColor: '#49C88F',
-      availableBg: '#E6F8EF',
-      activeScheme: '10+1 Free',
-      isAvailable: true,
-    },
-  ];
+  const queryLower = searchQuery.toLowerCase().trim();
 
-  // Generic items matching OneRx
-  const genericMedicines = [
-    {
-      id: 'g1',
-      name: 'Metformin 500mg',
-      type: 'Diabetes management',
-      segment: 'Endocrine / Diabetes',
-      brands: 4,
-      mappedBrands: [
-        { brand: 'Sanofi Aventis', name: 'Glucophage SR', tp: 135, mrp: 160, isAvailable: true, activeScheme: '10+1 Bonus' },
-        { brand: 'USV Pharma', name: 'Glycomet GP', tp: 120, mrp: 145, isAvailable: true, activeScheme: '5% Trade Off' },
-        { brand: 'Cipla Ltd', name: 'Obimet SR', tp: 110, mrp: 130, isAvailable: false, activeScheme: null },
-      ],
-    },
-    {
-      id: 'g2',
-      name: 'Metoprolol 50mg',
-      type: 'DPP-4 inhibitor',
-      segment: 'Cardiovascular',
-      brands: 3,
-      mappedBrands: [
-        { brand: 'AstraZeneca', name: 'Betaloc 50mg', tp: 220, mrp: 260, isAvailable: true, activeScheme: null },
-        { brand: 'Getz Pharma', name: 'Mepressor 50mg', tp: 180, mrp: 215, isAvailable: true, activeScheme: '12+1 Free' },
-      ],
-    },
-    {
-      id: 'g3',
-      name: 'Omeprazole 20mg Capsule',
-      type: 'Proton pump inhibitor',
-      segment: 'Gastroenterology',
-      brands: 4,
-      mappedBrands: [
-        { brand: 'Getz Pharma', name: 'Risek 20mg', tp: 135, mrp: 160, isAvailable: true, activeScheme: '10+1 Bonus' },
-        { brand: 'Ferozsons', name: 'Omega 20mg', tp: 120, mrp: 145, isAvailable: true, activeScheme: '5% Rebate' },
-        { brand: 'Searle', name: 'Omee 20mg', tp: 110, mrp: 130, isAvailable: false, activeScheme: null },
-      ],
-    },
-    {
-      id: 'g4',
-      name: 'Paracetamol + Caffeine',
-      type: 'Analgesic / Antipyretic',
-      segment: 'Pain Management',
-      brands: 3,
-      mappedBrands: [
-        { brand: 'GSK Pakistan', name: 'Calpol Plus', tp: 80, mrp: 95, isAvailable: true, activeScheme: null },
-        { brand: 'Reckitt', name: 'Disprin Extra', tp: 75, mrp: 90, isAvailable: true, activeScheme: '10+1 Free' },
-      ],
-    },
-  ];
+  const visibleItems = useMemo(() => {
+    const source = activeTab === 'Therapeutic Segment' ? DEFAULT_SEGMENTS : DEFAULT_GENERICS;
+    if (!queryLower) return source;
+    return source.filter(
+      (item) =>
+        item.name.toLowerCase().includes(queryLower) ||
+        (item.type || '').toLowerCase().includes(queryLower) ||
+        (item.segment || '').toLowerCase().includes(queryLower) ||
+        (item.topMolecules || '').toLowerCase().includes(queryLower)
+    );
+  }, [activeTab, queryLower]);
 
-  // Therapeutic Segments list
-  const therapeuticSegments = [
-    { id: 'ts1', name: 'Endocrine / Diabetes', count: 18, topMolecules: 'Metformin, Glimepiride, Sitagliptin' },
-    { id: 'ts2', name: 'Anti-Infective / Antibiotic', count: 24, topMolecules: 'Co-Amoxiclav, Ciprofloxacin, Azithromycin' },
-    { id: 'ts3', name: 'Cardiovascular / Antihypertensive', count: 16, topMolecules: 'Metoprolol, Amlodipine, Losartan' },
-    { id: 'ts4', name: 'Gastroenterology', count: 14, topMolecules: 'Omeprazole, Esomeprazole, Famotidine' },
-    { id: 'ts5', name: 'Pain Management & NSAIDs', count: 20, topMolecules: 'Paracetamol + Caffeine, Ibuprofen, Diclofenac' },
-  ];
-
-  const filteredBrands = allMedicines.filter((m) =>
-    m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    m.brand.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    m.generic.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const filteredGenerics = genericMedicines.filter((g) =>
-    g.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    g.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    g.segment?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const filteredSegments = therapeuticSegments.filter((s) =>
-    s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    s.topMolecules.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const handleSelect = (item) => {
+  const handleSelectItem = (item) => {
     Keyboard.dismiss();
+    const chosenBrand = item.mappedBrands?.[0] || item;
     if (onSelectMedicine) {
-      onSelectMedicine(item);
+      onSelectMedicine(chosenBrand, item);
     } else {
-      onClose();
+      onClose?.();
     }
   };
 
   return (
     <View style={styles.viewContainer}>
-      {/* Exact OneRx Header: LEFT Back Button, NO right-side cross X button */}
+      {/* Exact OneRx Header: Left Title + Right X Close Icon Button */}
       <View style={styles.header}>
-        <AppBackButton
+        <AppText style={[styles.title, { color: colors.text.primary }]} numberOfLines={1}>
+          {title}
+        </AppText>
+        <TouchableOpacity
           onPress={onClose}
-          size={scale(36)}
-          style={styles.backBtn}
-        />
-        <View style={{ flex: 1, marginLeft: spacing.sm }}>
-          <AppText style={[styles.title, { color: isDark ? '#FFFFFF' : '#111827' }]}>
-            Select Medicine
-          </AppText>
-        </View>
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          style={styles.iconBtn}
+          accessibilityRole="button"
+          accessibilityLabel="Close search"
+        >
+          <CloseIconSvg size={24} color={colors.text.primary} strokeWidth={1.8} />
+        </TouchableOpacity>
       </View>
 
-      {/* Pill Search Input matching OneRx */}
+      {/* Rounded Pill Search Bar with Magnifying Glass & Circular X Clear Button */}
       <View
         style={[
           styles.searchInputContainer,
           {
-            backgroundColor: isDark ? '#1C1C1E' : '#F0F2F5',
-            borderColor: isDark ? '#2C2C2E' : '#ECEEF1',
+            backgroundColor: colors.surface.inputSecondary,
+            borderColor: colors.border.subtle,
           },
         ]}
       >
-        <SearchIconSvg size={20} color={isDark ? '#FFFFFF' : '#020202'} />
+        <SearchIconSvg size={20} color={colors.text.primary} />
         <TextInput
-          style={[
-            styles.searchInput,
-            { color: isDark ? '#FFFFFF' : '#111827' },
-          ]}
-          placeholder="Search generic, segment or brand..."
-          placeholderTextColor={isDark ? '#8A8A8E' : '#8E95A2'}
+          style={[styles.searchInput, { color: colors.text.primary }]}
+          placeholder="Search medicines..."
+          placeholderTextColor={colors.text.muted}
           value={searchQuery}
           onChangeText={setSearchQuery}
           autoCapitalize="none"
@@ -234,366 +525,116 @@ export const MedicineSearchView = ({
             onPress={() => setSearchQuery('')}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             style={styles.clearBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Clear search query"
           >
-            <Svg width={scale(18)} height={scale(18)} viewBox="0 0 24 24" fill="none">
-              <Circle cx="12" cy="12" r="9" stroke={isDark ? '#8A8A8E' : '#8E95A2'} strokeWidth="1.2" />
-              <Path d="M14.5 9.5L9.5 14.5M9.5 9.5L14.5 14.5" stroke={isDark ? '#8A8A8E' : '#8E95A2'} strokeWidth="1.2" strokeLinecap="round" />
-            </Svg>
+            <ClearCircleIconSvg size={18} color={colors.text.muted} />
           </TouchableOpacity>
         )}
       </View>
 
-      {/* Pill Capsule Tabs Switcher */}
-      <View
-        style={[
-          styles.tabsTrack,
-          {
-            backgroundColor: isDark ? '#1C1C1E' : '#F0F2F5',
-            borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
-            borderWidth: isDark ? 1 : 0,
-          },
-        ]}
-      >
-        {tabs.map((tab) => {
-          const isActive = activeTab === tab;
-          return (
-            <TouchableOpacity
-              key={tab}
-              activeOpacity={0.8}
-              style={[
-                styles.tabBtn,
-                isActive && [
-                  styles.tabBtnActive,
-                  {
-                    backgroundColor: isDark ? '#333336' : '#FFFFFF',
-                    borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'transparent',
-                    borderWidth: isDark ? 1 : 0,
-                  },
-                ],
-              ]}
-              onPress={() => setActiveTab(tab)}
-            >
-              <AppText
-                style={[
-                  styles.tabText,
-                  {
-                    color: isActive
-                      ? (isDark ? '#FFFFFF' : '#111827')
-                      : (isDark ? '#8A8A8E' : '#8E95A2'),
-                    fontFamily: isActive ? fontFamilies.primaryMedium : fontFamilies.primary,
-                    fontWeight: isActive ? '600' : '400',
-                  },
-                ]}
-              >
-                {tab}
-              </AppText>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+      {/* Segmented OptionPills: Generic | Therapeutic Segment */}
+      <OptionPills
+        options={tabs}
+        selected={activeTab}
+        onSelect={setActiveTab}
+        style={styles.optionPillsWrap}
+      />
 
       {/* Medicine List */}
       <ScrollView
+        style={styles.flexList}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
       >
-        {/* GENERIC TAB */}
-        {activeTab === 'Generic' &&
-          filteredGenerics.map((gen) => (
-            <View
-              key={gen.id}
-              style={[
-                styles.card,
-                {
-                  backgroundColor: isDark ? '#121214' : '#FFFFFF',
-                  borderColor: isDark ? '#232326' : '#ECEEF2',
-                },
-              ]}
-            >
-              <TouchableOpacity
-                onPress={() => handleSelect(gen)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.cardHeaderRow}>
-                  <View style={styles.cardInfoCol}>
-                    <View style={styles.nameRow}>
-                      <HighlightedText
-                        searchQuery={searchQuery}
-                        text={gen.name}
-                        style={[styles.medicineName, { color: isDark ? '#FFFFFF' : '#111827' }]}
-                      />
-                    </View>
-                    <AppText style={[styles.medicineGeneric, { color: isDark ? '#8A8A8E' : '#71717A', marginTop: scale(4) }]}>
-                      {gen.type} • {gen.segment}
-                    </AppText>
-                  </View>
-
-                  <View
-                    style={[
-                      styles.chevronCircle,
-                      {
-                        backgroundColor: isDark ? '#262629' : '#F5F5F5',
-                        borderWidth: 0,
-                      },
-                    ]}
-                  >
-                    <Svg width={scale(16)} height={scale(16)} viewBox="0 0 24 24" fill="none">
-                      <Path
-                        d="M9 18L15 12L9 6"
-                        stroke={isDark ? '#8A8A8E' : '#9CA3AF'}
-                        strokeWidth="1.6"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </Svg>
-                  </View>
-                </View>
-              </TouchableOpacity>
-
-              <View style={styles.cardFooter}>
-                <TouchableOpacity
-                  onPress={() => onSetViewState('BRANDS', gen)}
-                  activeOpacity={0.7}
-                  style={[
-                    styles.viewBrandsBtn,
-                    {
-                      backgroundColor: isDark ? '#272727' : '#F5F5F5',
-                      borderWidth: 0,
-                    },
-                  ]}
-                >
-                  <AppText style={[styles.viewBrandsText, { color: isDark ? '#E4E4E7' : '#4B5563' }]}>
-                    View {gen.brands} Mapped Brands
-                  </AppText>
-                  <Svg width={scale(12)} height={scale(12)} viewBox="0 0 24 24" fill="none">
-                    <Path
-                      d="M6 9l6 6 6-6"
-                      stroke={isDark ? '#E4E4E7' : '#4B5563'}
-                      strokeWidth="2.2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </Svg>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  onPress={() => handleSelect(gen)}
-                  activeOpacity={0.7}
-                  style={[
-                    styles.statusBadge,
-                    {
-                      backgroundColor: isDark ? '#272727' : '#F5F5F5',
-                      borderWidth: 0,
-                    },
-                  ]}
-                >
-                  <AppText style={[styles.statusBadgeText, { color: '#49C88F' }]}>
-                    Select
-                  </AppText>
-                  <Svg width={scale(12)} height={scale(12)} viewBox="0 0 24 24" fill="none">
-                    <Path
-                      d="M9 18l6-6-6-6"
-                      stroke="#49C88F"
-                      strokeWidth="2.2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </Svg>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ))}
-
-        {/* THERAPEUTIC SEGMENT TAB */}
-        {activeTab === 'Therapeutic Segment' &&
-          filteredSegments.map((seg) => (
+        {visibleItems.map((item) => (
+          <View
+            key={item.id}
+            style={[
+              styles.card,
+              {
+                backgroundColor: colors.surface.card,
+                borderColor: colors.border.card,
+              },
+              isDark ? shadows.dark.card : shadows.light.card,
+            ]}
+          >
+            {/* Top Row: Medicine/Generic Name + Subtitle + Right Chevron Circle */}
             <TouchableOpacity
-              key={seg.id}
+              onPress={() => handleSelectItem(item)}
               activeOpacity={0.7}
-              onPress={() => handleSelect(seg)}
-              style={[
-                styles.card,
-                {
-                  backgroundColor: isDark ? '#121214' : '#FFFFFF',
-                  borderColor: isDark ? '#232326' : '#ECEEF2',
-                },
-              ]}
             >
               <View style={styles.cardHeaderRow}>
                 <View style={styles.cardInfoCol}>
-                  <HighlightedText
-                    searchQuery={searchQuery}
-                    text={seg.name}
-                    style={[styles.medicineName, { color: isDark ? '#FFFFFF' : '#111827' }]}
-                  />
-                  <AppText style={[styles.medicineGeneric, { color: isDark ? '#8A8A8E' : '#71717A', marginTop: scale(4) }]}>
-                    Key Molecules: {seg.topMolecules}
+                  <View style={styles.nameRow}>
+                    <HighlightedText
+                      searchQuery={searchQuery}
+                      medicineName={item.name}
+                      highlightColor={colors.brand.accent}
+                      style={[styles.medicineName, { color: colors.text.primary }]}
+                    />
+                  </View>
+                  <AppText
+                    style={[styles.medicineGeneric, { color: colors.text.secondary }]}
+                    numberOfLines={1}
+                  >
+                    {item.type}
                   </AppText>
                 </View>
 
                 <View
                   style={[
                     styles.chevronCircle,
-                    {
-                      backgroundColor: isDark ? '#262629' : '#F5F5F5',
-                      borderWidth: 0,
-                    },
+                    { backgroundColor: colors.surface.durationTabBg },
                   ]}
                 >
-                  <Svg width={scale(16)} height={scale(16)} viewBox="0 0 24 24" fill="none">
-                    <Path
-                      d="M9 18L15 12L9 6"
-                      stroke={isDark ? '#8A8A8E' : '#9CA3AF'}
-                      strokeWidth="1.6"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </Svg>
-                </View>
-              </View>
-
-              <View style={styles.cardFooter}>
-                <View
-                  style={[
-                    styles.pointsBadge,
-                    {
-                      backgroundColor: isDark ? 'rgba(0, 155, 169, 0.15)' : '#D1F5F8',
-                      borderColor: isDark ? 'rgba(0, 155, 169, 0.3)' : 'rgba(6, 182, 212, 0.25)',
-                    },
-                  ]}
-                >
-                  <AppText style={[styles.pointsText, { color: isDark ? '#5EEAD4' : '#0D7B8A' }]}>
-                    {seg.count} REGISTERED SKUS
-                  </AppText>
-                </View>
-
-                <View style={styles.statusBadge}>
-                  <AppText style={[styles.statusBadgeText, { color: '#009BA9' }]}>
-                    Browse Segment &gt;
-                  </AppText>
+                  <ChevronRightSvg size={16} color={colors.text.muted} strokeWidth={1.6} />
                 </View>
               </View>
             </TouchableOpacity>
-          ))}
 
-        {/* BRAND TAB */}
-        {activeTab === 'Brand' &&
-          filteredBrands.map((med) => (
-            <View
-              key={med.id}
-              style={[
-                styles.card,
-                {
-                  backgroundColor: isDark ? '#121214' : '#FFFFFF',
-                  borderColor: isDark ? '#232326' : '#ECEEF2',
-                },
-              ]}
-            >
+            {/* Bottom Row: View Brands v (Left) & Available v (Right) */}
+            <View style={styles.cardFooter}>
               <TouchableOpacity
-                onPress={() => handleSelect(med)}
+                onPress={() => onSetViewState?.('BRANDS', item)}
                 activeOpacity={0.7}
+                style={[
+                  styles.viewBrandsBtn,
+                  { backgroundColor: colors.surface.durationTabBg },
+                ]}
               >
-                <View style={styles.cardHeaderRow}>
-                  <View style={styles.cardInfoCol}>
-                    <AppText style={[styles.pharmaName, { color: isDark ? '#E0E0E0' : '#1F2937' }]}>
-                      {med.brand}
-                    </AppText>
-
-                    <View style={styles.nameRow}>
-                      <HighlightedText
-                        searchQuery={searchQuery}
-                        text={med.name}
-                        style={[styles.medicineName, { color: isDark ? '#FFFFFF' : '#111827' }]}
-                      />
-                      <AppText style={[styles.medicineForm, { color: isDark ? '#FFFFFF' : '#111827' }]}>
-                        {' '}• {med.form}
-                      </AppText>
-                    </View>
-
-                    <AppText
-                      style={[
-                        styles.medicineGeneric,
-                        {
-                          color: isDark ? '#8A8A8E' : '#71717A',
-                          fontFamily: fontFamilies.monoMedium || 'DMMono-Medium',
-                        },
-                      ]}
-                      numberOfLines={1}
-                    >
-                      {med.generic} • TP: Rs. {med.tp} • MRP: Rs. {med.mrp}
-                    </AppText>
-                  </View>
-
-                  <View
-                    style={[
-                      styles.chevronCircle,
-                      {
-                        backgroundColor: isDark ? '#262629' : '#F5F5F5',
-                        borderWidth: 0,
-                      },
-                    ]}
-                  >
-                    <Svg width={scale(16)} height={scale(16)} viewBox="0 0 24 24" fill="none">
-                      <Path
-                        d="M9 18L15 12L9 6"
-                        stroke={isDark ? '#8A8A8E' : '#9CA3AF'}
-                        strokeWidth="1.6"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </Svg>
-                  </View>
-                </View>
+                <AppText style={[styles.viewBrandsText, { color: colors.text.primary }]}>
+                  View Brands
+                </AppText>
+                <ChevronDown size={12} color={colors.text.primary} strokeWidth={2.2} />
               </TouchableOpacity>
 
-              <View style={styles.cardFooter}>
-                {med.activeScheme ? (
-                  <View
-                    style={[
-                      styles.pointsBadge,
-                      {
-                        backgroundColor: isDark ? 'rgba(251, 107, 3, 0.15)' : '#FFF3E8',
-                        borderColor: colors.brand?.accent || '#FB6B03',
-                      },
-                    ]}
-                  >
-                    <AppText style={[styles.pointsText, { color: colors.brand?.accent || '#FB6B03' }]}>
-                      SCHEME: {med.activeScheme}
-                    </AppText>
-                  </View>
-                ) : (
-                  <View style={{ flex: 1 }} />
-                )}
-
-                <TouchableOpacity
-                  onPress={() => onSetViewState('PHARMACIES')}
-                  activeOpacity={0.7}
-                  style={[
-                    styles.statusBadge,
-                    {
-                      backgroundColor: isDark ? '#272727' : '#F5F5F5',
-                      borderWidth: 0,
-                    },
-                  ]}
-                >
-                  <AppText style={[styles.statusBadgeText, { color: '#49C88F' }]}>
-                    In Stock
-                  </AppText>
-                  <Svg width={scale(12)} height={scale(12)} viewBox="0 0 24 24" fill="none">
-                    <Path
-                      d="M6 9l6 6 6-6"
-                      stroke="#49C88F"
-                      strokeWidth="2.2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </Svg>
-                </TouchableOpacity>
-              </View>
+              <TouchableOpacity
+                onPress={() => onSetViewState?.('PHARMACIES', item)}
+                activeOpacity={0.7}
+                style={[
+                  styles.statusBadge,
+                  { backgroundColor: colors.status.accentBg },
+                ]}
+              >
+                <AppText style={[styles.statusBadgeText, { color: colors.brand.accent }]}>
+                  Available
+                </AppText>
+                <ChevronDown size={12} color={colors.brand.accent} strokeWidth={2.2} />
+              </TouchableOpacity>
             </View>
-          ))}
+          </View>
+        ))}
+
+        {visibleItems.length === 0 && (
+          <View style={styles.emptyWrap}>
+            <AppText style={[styles.emptyText, { color: colors.text.muted }]}>
+              No matching medicines found.
+            </AppText>
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -606,17 +647,20 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: verticalScale(16),
-  },
-  backBtn: {
-    justifyContent: 'center',
-    alignItems: 'center',
+    flexShrink: 0,
   },
   title: {
     fontSize: scaleFont(18),
     lineHeight: scaleFont(22),
     fontFamily: fontFamilies.primaryBold,
     fontWeight: '600',
+    flex: 1,
+    marginRight: spacing.sm,
+  },
+  iconBtn: {
+    padding: spacing.xs,
   },
   searchInputContainer: {
     height: verticalScale(46),
@@ -626,6 +670,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.pill,
     borderWidth: 1,
     marginBottom: verticalScale(12),
+    flexShrink: 0,
   },
   searchInput: {
     flex: 1,
@@ -637,44 +682,21 @@ const styles = StyleSheet.create({
   clearBtn: {
     padding: scale(4),
   },
-  tabsTrack: {
-    height: verticalScale(38),
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: radii.pill,
-    padding: scale(3),
+  optionPillsWrap: {
     marginBottom: verticalScale(16),
+    flexShrink: 0,
   },
-  tabBtn: {
+  flexList: {
     flex: 1,
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: radii.pill,
-  },
-  tabBtnActive: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  tabText: {
-    fontSize: scaleFont(13),
   },
   listContent: {
-    paddingBottom: verticalScale(48),
+    paddingBottom: verticalScale(24),
   },
   card: {
-    borderRadius: scale(18),
+    borderRadius: radii.xl,
     borderWidth: 1,
     padding: scale(16),
     marginBottom: verticalScale(12),
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
   },
   cardHeaderRow: {
     flexDirection: 'row',
@@ -685,33 +707,22 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: scale(12),
   },
-  pharmaName: {
-    fontSize: scaleFont(12),
-    lineHeight: scaleFont(16),
-    fontFamily: fontFamilies.primaryMedium,
-    marginBottom: scale(4),
-  },
   nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
   },
   medicineName: {
-    fontSize: scaleFont(18),
+    fontSize: scaleFont(17),
     lineHeight: scaleFont(22),
-    fontFamily: fontFamilies.primaryBold,
-  },
-  medicineForm: {
-    fontSize: scaleFont(14),
-    lineHeight: scaleFont(18),
-    fontFamily: fontFamilies.primary,
-    fontWeight: '400',
+    fontFamily: fontFamilies.primaryMedium,
+    fontWeight: '600',
   },
   medicineGeneric: {
-    fontSize: scaleFont(12),
-    lineHeight: scaleFont(16),
+    fontSize: scaleFont(12.5),
+    lineHeight: scaleFont(17),
     fontFamily: fontFamilies.primary,
-    marginTop: scale(4),
+    marginTop: spacing.xxs,
   },
   chevronCircle: {
     width: scale(32),
@@ -719,33 +730,32 @@ const styles = StyleSheet.create({
     borderRadius: scale(16),
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
   },
   cardFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: verticalScale(14),
+    marginTop: spacing.sm,
   },
-  pointsBadge: {
-    paddingHorizontal: scale(10),
-    paddingVertical: scale(4),
+  viewBrandsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: scale(12),
+    paddingVertical: scale(6),
     borderRadius: radii.pill,
-    borderWidth: 1,
-    alignSelf: 'flex-start',
   },
-  pointsText: {
-    fontSize: scaleFont(10),
-    lineHeight: scaleFont(12),
-    fontFamily: fontFamilies.primaryBold,
-    fontWeight: '700',
-    letterSpacing: 0.2,
+  viewBrandsText: {
+    fontSize: scaleFont(12.5),
+    lineHeight: scaleFont(16),
+    fontFamily: fontFamilies.primaryMedium,
+    fontWeight: '500',
+    marginRight: scale(6),
   },
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: scale(12),
-    paddingVertical: scale(5),
+    paddingVertical: scale(6),
     borderRadius: radii.pill,
   },
   statusBadgeText: {
@@ -755,19 +765,13 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginRight: scale(6),
   },
-  viewBrandsBtn: {
-    flexDirection: 'row',
+  emptyWrap: {
     alignItems: 'center',
-    paddingHorizontal: scale(12),
-    paddingVertical: scale(5),
-    borderRadius: radii.pill,
+    marginTop: verticalScale(40),
   },
-  viewBrandsText: {
-    fontSize: scaleFont(12.5),
-    lineHeight: scaleFont(16),
-    fontFamily: fontFamilies.primaryMedium,
-    fontWeight: '500',
-    marginRight: scale(6),
+  emptyText: {
+    fontFamily: fontFamilies.primary,
+    fontSize: scaleFont(14),
   },
 });
 

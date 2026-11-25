@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useTheme } from '../../theme/index.js';
+import { fontFamilies } from '../../theme/typography.js';
 import { scale, verticalScale, scaleFont } from '../../theme/responsive.js';
 import {
   AppModal,
@@ -186,11 +187,15 @@ export const WithdrawAccountDetailsModal = ({
             onFocus={() => setFocusedField('acc')}
             onBlur={() => setFocusedField(null)}
             placeholder="Account / Mobile Wallet Number"
-            placeholderTextColor={isDark ? '#94A3B8' : '#9CA3AF'}
+            placeholderTextColor={colors.text.inputPlaceholder}
             keyboardType="phone-pad"
             style={[
               styles.textInput,
-              { color: colors.text.primary },
+              {
+                color: colors.text.primary,
+                fontFamily: accountNumber.length > 0 ? fontFamilies.monoMedium : fontFamilies.primaryRegular,
+                ...(accountNumber.length > 0 ? { fontVariant: ['tabular-nums'] } : null),
+              },
             ]}
           />
         </View>
@@ -232,10 +237,14 @@ export const WithdrawAccountDetailsModal = ({
             onFocus={() => setFocusedField('ntn')}
             onBlur={() => setFocusedField(null)}
             placeholder="Pharmacy NTN / STRN (e.g. 7819204-5)"
-            placeholderTextColor={isDark ? '#94A3B8' : '#9CA3AF'}
+            placeholderTextColor={colors.text.inputPlaceholder}
             style={[
               styles.textInput,
-              { color: colors.text.primary },
+              {
+                color: colors.text.primary,
+                fontFamily: ntnNumber.length > 0 ? fontFamilies.monoMedium : fontFamilies.primaryRegular,
+                ...(ntnNumber.length > 0 ? { fontVariant: ['tabular-nums'] } : null),
+              },
             ]}
           />
         </View>

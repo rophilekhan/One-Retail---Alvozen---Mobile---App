@@ -55,6 +55,14 @@
 		<string>UIInterfaceOrientationPortrait</string>
 		<string>UIInterfaceOrientationPortraitUpsideDown</string>
 	</array>
+	<key>UIAppFonts</key>
+	<array>
+		<string>DMMono-Medium.ttf</string>
+		<string>DMMono-Regular.ttf</string>
+		<string>DMSans-Light.ttf</string>
+		<string>DMSans-Medium.ttf</string>
+		<string>DMSans-Regular.ttf</string>
+	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
 </dict>

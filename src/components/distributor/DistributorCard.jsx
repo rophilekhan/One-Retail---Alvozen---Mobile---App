@@ -89,7 +89,7 @@ export const DistributorCard = ({
               typography?.bodyLarge,
               {
                 color: colors.text?.primary || (isDark ? '#FFFFFF' : '#020202'),
-                fontFamilies: fontFamilies.primaryMedium || 'DMSans-Medium',
+                fontFamily: fontFamilies.primaryMedium || 'DMSans-Medium',
               },
             ]}
             numberOfLines={1}
@@ -156,7 +156,7 @@ export const DistributorCard = ({
           <AppText
             style={[
               styles.metricValue,
-              { color: colors.brand?.primary || '#009BA9', fontFamily: fontFamilies.monoMedium || 'DMMono-Medium' },
+              { color: colors.brand?.primary || '#009BA9', fontFamily: fontFamilies.monoMedium || 'DMMono-Medium', fontVariant: ['tabular-nums'] },
             ]}
             numberOfLines={1}
           >
@@ -186,7 +186,7 @@ export const DistributorCard = ({
           <AppText
             style={[
               styles.metricValue,
-              { color: colors.text?.primary || (isDark ? '#FFFFFF' : '#020202'), fontFamily: fontFamilies.monoMedium || 'DMMono-Medium' },
+              { color: colors.text?.primary || (isDark ? '#FFFFFF' : '#020202'), fontFamily: fontFamilies.monoMedium || 'DMMono-Medium', fontVariant: ['tabular-nums'] },
             ]}
             numberOfLines={1}
           >
@@ -216,7 +216,7 @@ export const DistributorCard = ({
           <AppText
             style={[
               styles.metricValue,
-              { color: colors.text?.primary || (isDark ? '#FFFFFF' : '#020202'), fontFamily: fontFamilies.monoMedium || 'DMMono-Medium' },
+              { color: colors.text?.primary || (isDark ? '#FFFFFF' : '#020202'), fontFamily: fontFamilies.monoMedium || 'DMMono-Medium', fontVariant: ['tabular-nums'] },
             ]}
             numberOfLines={1}
           >

@@ -39,7 +39,15 @@ export const HomeHeader = () => {
 
   const user = useAuthStore((s) => s.user);
   const pharmacy = usePharmacyStore();
-  const territory = pharmacy.territory || AVAILABLE_TERRITORIES[0];
+  const rawTerritory = pharmacy.territory || AVAILABLE_TERRITORIES[0];
+  const territory =
+    typeof rawTerritory === 'string'
+      ? { ...AVAILABLE_TERRITORIES[0], name: rawTerritory }
+      : {
+          ...AVAILABLE_TERRITORIES[0],
+          ...rawTerritory,
+          name: rawTerritory?.name || AVAILABLE_TERRITORIES[0].name,
+        };
   const piiTier = pharmacy.piiTier || 'Key Account';
   const pharmacyName = pharmacy.name || user?.name || 'City Meds Pharmacy';
 

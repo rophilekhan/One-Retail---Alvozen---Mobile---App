@@ -194,6 +194,7 @@ export const CreateExpiryClaimModal = ({
               value={unitValue}
               onChangeText={setUnitValue}
               keyboardType="numeric"
+              isMono={true}
             />
           </View>
         </View>
@@ -230,6 +231,7 @@ export const CreateExpiryClaimModal = ({
                 {
                   color: colors.text?.primary || (isDark ? '#FFFFFF' : '#020202'),
                   fontFamily: fontFamilies.monoMedium || 'DMMono-Medium',
+                  fontVariant: ['tabular-nums'],
                 },
               ]}
             >
@@ -282,7 +284,15 @@ export const CreateExpiryClaimModal = ({
                 },
               ]}
             >
-              {`Unit Value: Rs. ${unitValue || '0'} × ${quantity} units`}
+              Unit Value:{' '}
+              <AppText isMono style={[styles.subtotalLineLabel, { color: colors.text?.primary || (isDark ? '#FFFFFF' : '#0F4761') }]}>
+                Rs. {unitValue || '0'}
+              </AppText>
+              {' × '}
+              <AppText isMono style={[styles.subtotalLineLabel, { color: colors.text?.primary || (isDark ? '#FFFFFF' : '#0F4761') }]}>
+                {quantity}
+              </AppText>
+              {' units'}
             </AppText>
             <AppText
               style={[
@@ -290,6 +300,7 @@ export const CreateExpiryClaimModal = ({
                 {
                   color: colors.text?.primary || (isDark ? '#FFFFFF' : '#0F4761'),
                   fontFamily: fontFamilies.monoMedium || 'DMMono-Medium',
+                  fontVariant: ['tabular-nums'],
                 },
               ]}
             >
@@ -315,6 +326,7 @@ export const CreateExpiryClaimModal = ({
                 {
                   color: colors.brand?.accent || '#FB6B03',
                   fontFamily: fontFamilies.monoMedium || 'DMMono-Medium',
+                  fontVariant: ['tabular-nums'],
                 },
               ]}
             >

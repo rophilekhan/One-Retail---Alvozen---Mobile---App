@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { View, StyleSheet, TouchableOpacity, Alert, Linking, ActivityIndicator } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import Geolocation from '@react-native-community/geolocation';
 import { useTheme } from '../../theme/index.js';
@@ -8,9 +8,11 @@ import { fontFamilies } from '../../theme/typography.js';
 import { AppText, AppInput, AppToast, GlassCard } from '../core/index.js';
 import { MapPinIcon, TargetMapIcon } from '../../assets/vectors/index.js';
 import {
-  requestLocationPermission,
+  requestLocationPermissionStatus,
   reverseGeocode,
   DARK_MAP_STYLE,
+  DEFAULT_COORDINATES,
+  parseFiniteCoord,
 } from '../../services/geocodingService.js';
 
 /**
@@ -34,18 +36,62 @@ export const PharmacyMapAddressCard = ({
 }) => {
   const { colors, isDark, radii, typography } = useTheme();
   const [isLocating, setIsLocating] = useState(false);
+  const mapRef = useRef(null);
+  const isMapReadyRef = useRef(false);
+
+  const parsedLat = parseFiniteCoord(coordinates?.latitude);
+  const parsedLng = parseFiniteCoord(coordinates?.longitude);
+  const safeLat = Number.isFinite(parsedLat) ? parsedLat : DEFAULT_COORDINATES.latitude;
+  const safeLng = Number.isFinite(parsedLng) ? parsedLng : DEFAULT_COORDINATES.longitude;
+
+  const targetRegion = useMemo(
+    () => ({
+      latitude: safeLat,
+      longitude: safeLng,
+      latitudeDelta: DEFAULT_COORDINATES.latitudeDelta,
+      longitudeDelta: DEFAULT_COORDINATES.longitudeDelta,
+    }),
+    [safeLat, safeLng]
+  );
+
+  const handleMapReady = useCallback(() => {
+    isMapReadyRef.current = true;
+    if (mapRef.current?.animateToRegion) {
+      mapRef.current.animateToRegion(targetRegion, 300);
+    }
+  }, [targetRegion]);
+
+  useEffect(() => {
+    if (isMapReadyRef.current && mapRef.current?.animateToRegion) {
+      mapRef.current.animateToRegion(targetRegion, 300);
+    }
+  }, [targetRegion]);
 
   const handleQuickGps = async () => {
     try {
       setIsLocating(true);
-      const hasPermission = await requestLocationPermission();
-      if (!hasPermission) {
+      const { granted, status } = await requestLocationPermissionStatus();
+      if (!granted) {
         setIsLocating(false);
-        AppToast.show({
-          title: 'Location Permission',
-          message: 'Please allow location permission in device settings to detect GPS.',
-          type: 'error',
-        });
+        if (status === 'blocked') {
+          Alert.alert(
+            'Location Permission Blocked',
+            'Enable Location permission in device Settings to detect your pharmacy GPS position.',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Open Settings',
+                onPress: () => Linking.openSettings().catch(() => { }),
+              },
+            ]
+          );
+        } else {
+          AppToast.show({
+            title: 'Location Permission',
+            message: 'Please allow location permission in device settings to detect GPS.',
+            type: 'error',
+          });
+        }
         return;
       }
 
@@ -53,10 +99,24 @@ export const PharmacyMapAddressCard = ({
         async (position) => {
           setIsLocating(false);
           if (position?.coords) {
-            const { latitude, longitude } = position.coords;
-            onCoordinatesChange?.({ latitude, longitude });
+            const lat = parseFiniteCoord(position.coords.latitude);
+            const lng = parseFiniteCoord(position.coords.longitude);
+            if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+            onCoordinatesChange?.({ latitude: lat, longitude: lng });
+            if (isMapReadyRef.current && mapRef.current?.animateToRegion) {
+              mapRef.current.animateToRegion(
+                {
+                  latitude: lat,
+                  longitude: lng,
+                  latitudeDelta: DEFAULT_COORDINATES.latitudeDelta,
+                  longitudeDelta: DEFAULT_COORDINATES.longitudeDelta,
+                },
+                300
+              );
+            }
             try {
-              const res = await reverseGeocode(latitude, longitude);
+              const res = await reverseGeocode(lat, lng);
               if (res?.formattedAddress) {
                 onAddressChange?.(res.formattedAddress);
               }
@@ -78,7 +138,7 @@ export const PharmacyMapAddressCard = ({
             type: 'error',
           });
         },
-        { enableHighAccuracy: false, timeout: 15000, maximumAge: 10000 }
+        { enableHighAccuracy: false, timeout: 10000, maximumAge: 30000 }
       );
     } catch {
       setIsLocating(false);
@@ -90,22 +150,19 @@ export const PharmacyMapAddressCard = ({
       {/* Live Interactive MapView */}
       <View style={styles.mapCanvasHolder}>
         <MapView
+          ref={mapRef}
           provider={PROVIDER_GOOGLE}
-          style={StyleSheet.absoluteFillObject}
-          region={{
-            latitude: coordinates?.latitude || 31.5204,
-            longitude: coordinates?.longitude || 74.3587,
-            latitudeDelta: 0.005,
-            longitudeDelta: 0.005,
-          }}
+          style={styles.map}
+          initialRegion={targetRegion}
           customMapStyle={isDark ? DARK_MAP_STYLE : []}
           showsUserLocation={true}
           showsMyLocationButton={false}
+          onMapReady={handleMapReady}
         >
           <Marker
             coordinate={{
-              latitude: coordinates?.latitude || 31.5204,
-              longitude: coordinates?.longitude || 74.3587,
+              latitude: safeLat,
+              longitude: safeLng,
             }}
             title="Pharmacy Location"
             description={address}
@@ -119,13 +176,17 @@ export const PharmacyMapAddressCard = ({
           style={[
             styles.quickGpsFab,
             {
-              backgroundColor: isDark ? 'rgba(15, 23, 30, 0.92)' : 'rgba(255, 255, 255, 0.95)',
-              borderColor: isDark ? 'rgba(255, 255, 255, 0.14)' : 'rgba(0, 0, 0, 0.08)',
-              shadowColor: isDark ? '#000000' : (colors.surface?.inputShadow || '#6FB4C2'),
+              backgroundColor: colors.surface?.cardElevated || colors.surface?.card,
+              borderColor: colors.border?.card || colors.border?.subtle,
+              shadowColor: isDark ? colors.camera?.shadow : colors.surface?.inputShadow,
             },
           ]}
         >
-          <TargetMapIcon size={scale(28)} />
+          {isLocating ? (
+            <ActivityIndicator size="small" color={colors.brand.primary} />
+          ) : (
+            <TargetMapIcon size={scale(28)} />
+          )}
         </TouchableOpacity>
 
         {/* Adjust Pin on Full Map Floating Pill Button */}
@@ -135,9 +196,9 @@ export const PharmacyMapAddressCard = ({
           style={[
             styles.adjustPinBtn,
             {
-              backgroundColor: isDark ? 'rgba(10, 10, 12, 0.9)' : 'rgba(255, 255, 255, 0.95)',
-              borderColor: isDark ? 'rgba(255, 255, 255, 0.14)' : 'rgba(0, 0, 0, 0.08)',
-              shadowColor: isDark ? '#000000' : (colors.surface?.inputShadow || '#6FB4C2'),
+              backgroundColor: colors.surface?.cardElevated || colors.surface?.card,
+              borderColor: colors.border?.card || colors.border?.subtle,
+              shadowColor: isDark ? colors.camera?.shadow : colors.surface?.inputShadow,
             },
           ]}
         >
@@ -169,8 +230,8 @@ export const PharmacyMapAddressCard = ({
           style={[
             styles.coordBadge,
             {
-              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : '#F0F9FA',
-              borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 155, 169, 0.12)',
+              backgroundColor: isDark ? colors.glass?.primary : colors.surface?.iconBg,
+              borderColor: isDark ? colors.border?.card : colors.border?.pointsBadge,
             },
           ]}
         >
@@ -181,7 +242,7 @@ export const PharmacyMapAddressCard = ({
               { color: colors.brand.primary, fontFamily: fontFamilies.monoRegular },
             ]}
           >
-            {`GPS Coordinates: ${(coordinates?.latitude || 0).toFixed(5)}° N, ${(coordinates?.longitude || 0).toFixed(5)}° E`}
+            {`GPS Coordinates: ${safeLat.toFixed(5)}° N, ${safeLng.toFixed(5)}° E`}
           </AppText>
         </View>
       </View>
@@ -198,9 +259,9 @@ export const PharmacyMapAddressCard = ({
         styles.cardOuter,
         styles.lightCard,
         {
-          backgroundColor: colors.surface?.card || '#FFFFFF',
-          borderColor: colors.border?.card || 'rgba(0, 0, 0, 0.06)',
-          shadowColor: colors.surface?.inputShadow || '#6FB4C2',
+          backgroundColor: colors.surface?.card,
+          borderColor: colors.border?.card,
+          shadowColor: colors.surface?.inputShadow,
         },
       ]}
     >
@@ -235,6 +296,10 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderTopLeftRadius: moderateScale(24),
     borderTopRightRadius: moderateScale(24),
+  },
+  map: {
+    width: '100%',
+    height: verticalScale(190),
   },
   quickGpsFab: {
     position: 'absolute',

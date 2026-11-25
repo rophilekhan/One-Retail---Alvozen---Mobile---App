@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { useTheme } from '../../theme/index.js';
+import { fontFamilies } from '../../theme/typography.js';
 import { scale, verticalScale, scaleFont } from '../../theme/responsive.js';
 import {
   AppModal,
@@ -55,6 +56,7 @@ export const EnterWithdrawalAmountModal = ({
   onBack,
   onContinue,
   availableBalance = '48,500',
+  minAmount = '500',
 }) => {
   const { colors, isDark } = useTheme();
   const isModalVisible = visible !== undefined ? visible : isVisible;
@@ -64,17 +66,18 @@ export const EnterWithdrawalAmountModal = ({
 
   const isFilledOrFocused = isFocused || (amount !== '' && amount !== '0');
   const activeBorderColor = isDark
-    ? (colors.brand?.primary || '#009BA9')
-    : (colors.brand?.primaryDark || '#0F4761');
+    ? colors.brand.primary
+    : colors.brand.primaryDark;
+  const minNum = parseInt(String(minAmount).replace(/[^0-9]/g, ''), 10) || 500;
 
   const handleContinue = () => {
     const rawVal = String(amount).replace(/[^0-9]/g, '');
     const num = parseInt(rawVal, 10);
 
-    if (!num || num <= 0) {
+    if (!num || num < minNum) {
       AppToast.show({
-        title: 'Invalid Amount',
-        message: 'Please enter a valid amount greater than 0 PKR.',
+        title: 'Minimum Limit',
+        message: `Please enter at least PKR ${minAmount} to withdraw.`,
         type: 'warning',
       });
       return;
@@ -93,8 +96,8 @@ export const EnterWithdrawalAmountModal = ({
       style={[
         styles.modalContainer,
         {
-          backgroundColor: isDark ? '#141416' : '#FFFFFF',
-          borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
+          backgroundColor: isDark ? colors.surface.sheetElevated : colors.surface.sheet,
+          borderColor: colors.border.card,
         },
       ]}
     >
@@ -133,10 +136,10 @@ export const EnterWithdrawalAmountModal = ({
         style={[
           styles.amountInputContainer,
           {
-            backgroundColor: isDark ? '#1C1C20' : '#F8FAFC',
+            backgroundColor: isDark ? colors.surface.inputSecondary : colors.background.secondary,
             borderColor: isFilledOrFocused
               ? activeBorderColor
-              : (isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)'),
+              : colors.border.card,
             borderWidth: isFilledOrFocused ? 1.5 : 1,
           },
         ]}
@@ -147,14 +150,14 @@ export const EnterWithdrawalAmountModal = ({
               styles.coinDisc,
               {
                 backgroundColor: isDark
-                  ? 'rgba(0, 155, 169, 0.15)'
-                  : 'rgba(15, 71, 97, 0.08)',
+                  ? colors.pastel.teal
+                  : colors.surface.iconBg,
               },
             ]}
           >
             <MoneyOfficialIcon
               size={scale(22)}
-              color={isDark ? '#38BDF8' : '#0F4761'}
+              color={isDark ? colors.brand.primary : colors.brand.primaryDark}
             />
           </View>
 
@@ -171,7 +174,7 @@ export const EnterWithdrawalAmountModal = ({
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
             placeholder="0"
-            placeholderTextColor={isDark ? '#94A3B8' : '#9CA3AF'}
+            placeholderTextColor={colors.text.inputPlaceholder}
             keyboardType="numeric"
             style={[
               styles.amountTextInput,
@@ -184,9 +187,7 @@ export const EnterWithdrawalAmountModal = ({
           style={[
             styles.currencyBadge,
             {
-              backgroundColor: isDark
-                ? 'rgba(255, 255, 255, 0.08)'
-                : 'rgba(0, 0, 0, 0.06)',
+              backgroundColor: colors.surface.pillSecondary,
             },
           ]}
         >
@@ -201,24 +202,45 @@ export const EnterWithdrawalAmountModal = ({
         </View>
       </View>
 
-      {/* 3. Available Balance Readout */}
+      {/* 3. Available Balance & Min Limit Readout */}
       <View style={styles.balanceRow}>
-        <AppText
-          style={[
-            styles.balanceLabel,
-            { color: isDark ? '#94A3B8' : '#64748B' },
-          ]}
-        >
-          Available Balance:
-        </AppText>
-        <AppText
-          style={[
-            styles.balanceValue,
-            { color: isDark ? '#38BDF8' : '#0F4761' },
-          ]}
-        >
-          {` Rs ${availableBalance}`}
-        </AppText>
+        <View style={styles.balanceMetaLeft}>
+          <AppText
+            style={[
+              styles.balanceLabel,
+              { color: colors.text.secondary },
+            ]}
+          >
+            Available:
+          </AppText>
+          <AppText
+            style={[
+              styles.balanceValue,
+              { color: isDark ? colors.brand.primary : colors.brand.primaryDark },
+            ]}
+          >
+            {` Rs ${availableBalance}`}
+          </AppText>
+        </View>
+
+        <View style={styles.balanceMetaRight}>
+          <AppText
+            style={[
+              styles.balanceLabel,
+              { color: colors.text.secondary },
+            ]}
+          >
+            Min:{' '}
+          </AppText>
+          <AppText
+            style={[
+              styles.minLimitValue,
+              { color: colors.text.primary },
+            ]}
+          >
+            {`PKR ${minAmount}`}
+          </AppText>
+        </View>
       </View>
 
       {/* 4. Continue Button */}
@@ -230,10 +252,13 @@ export const EnterWithdrawalAmountModal = ({
         style={[
           styles.continueButton,
           {
-            backgroundColor: isDark ? '#009BA9' : '#0B3B4B',
+            backgroundColor: isDark ? colors.brand.primary : colors.brand.primaryDark,
           },
         ]}
-        textStyle={styles.continueButtonText}
+        textStyle={[
+          styles.continueButtonText,
+          { color: isDark ? colors.text.primary : colors.text.inverse },
+        ]}
       />
     </AppModal>
   );
@@ -259,8 +284,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: scaleFont(18),
-    fontFamily: 'DMSans-Bold',
-    fontWeight: '700',
+    fontFamily: fontFamilies.primaryMedium,
   },
   amountInputContainer: {
     flexDirection: 'row',
@@ -286,8 +310,9 @@ const styles = StyleSheet.create({
   },
   amountTextInput: {
     fontSize: scaleFont(24),
-    fontFamily: 'DMSans-Bold',
-    fontWeight: '700',
+    fontFamily: fontFamilies.monoMedium,
+    fontWeight: '500',
+    fontVariant: ['tabular-nums'],
     flex: 1,
     paddingVertical: 0,
   },
@@ -298,23 +323,40 @@ const styles = StyleSheet.create({
   },
   currencyBadgeText: {
     fontSize: scaleFont(13),
-    fontFamily: 'DMSans-Bold',
-    fontWeight: '700',
+    fontFamily: fontFamilies.monoMedium,
+    fontWeight: '500',
+    fontVariant: ['tabular-nums'],
   },
   balanceRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: verticalScale(24),
     paddingHorizontal: scale(4),
   },
+  balanceMetaLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  balanceMetaRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   balanceLabel: {
     fontSize: scaleFont(13),
-    fontFamily: 'DMSans-Regular',
+    fontFamily: fontFamilies.primaryRegular,
   },
   balanceValue: {
     fontSize: scaleFont(13.5),
-    fontFamily: 'DMSans-Bold',
-    fontWeight: '700',
+    fontFamily: fontFamilies.monoMedium,
+    fontWeight: '500',
+    fontVariant: ['tabular-nums'],
+  },
+  minLimitValue: {
+    fontSize: scaleFont(13),
+    fontFamily: fontFamilies.monoMedium,
+    fontWeight: '500',
+    fontVariant: ['tabular-nums'],
   },
   continueButton: {
     width: '100%',
@@ -322,9 +364,7 @@ const styles = StyleSheet.create({
     height: verticalScale(50),
   },
   continueButtonText: {
-    color: '#FFFFFF',
-    fontFamily: 'DMSans-Bold',
-    fontWeight: '700',
+    fontFamily: fontFamilies.primaryMedium,
     fontSize: scaleFont(15.5),
   },
 });

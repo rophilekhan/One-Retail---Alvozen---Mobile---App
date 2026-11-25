@@ -7,7 +7,6 @@ import {
   GlassCard,
   AppBadge,
   AppButton,
-  AppInput,
   AppToast,
   MetricIconDisc,
   QuantityStepperInput,
@@ -18,7 +17,6 @@ import { useDispenseStore } from '../../store/useDispenseStore.js';
 import { usePharmacyStore } from '../../store/usePharmacyStore.js';
 import { SelectMedicineModal } from '../../components/prescription/index.js';
 import {
-  PillIcon,
   PillsMedicineIcon,
   TransferArrowsIconSvg,
   PointsStarIcon,
@@ -58,7 +56,7 @@ export const DispenseConfirmationScreen = ({ navigation, route }) => {
       };
       substituteBrand(targetId, brand, route.params.substituteReason || 'Generic Mapped');
     }
-  }, [route?.params]);
+  }, [route?.params, substituteBrand]);
 
   // Financial calculations
   let totalMRP = 0;
@@ -83,10 +81,10 @@ export const DispenseConfirmationScreen = ({ navigation, route }) => {
     setSubstituteModalVisible(true);
   };
 
-  const handleSelectSubstitute = (subBrand) => {
+  const handleSelectSubstitute = (subBrand, contextMed) => {
     if (activeSubstituteItemId) {
       const brandTitle = subBrand?.brandName || subBrand?.name || 'Substitute Brand';
-      const reason = 'Out of Stock';
+      const reason = contextMed?.isAvailable === false ? 'Out of Stock' : 'Out of Stock';
       substituteBrand(activeSubstituteItemId, subBrand, reason);
       setSubstituteModalVisible(false);
       AppToast.show({
@@ -128,13 +126,16 @@ export const DispenseConfirmationScreen = ({ navigation, route }) => {
         <View style={styles.headerRow}>
           <View style={{ flex: 1 }}>
             <AppText variant="titleMedium" colorType="primary">
-              Rx: {activePrescription?.prescriptionNumber || 'RX-99214'}
+              Rx:{' '}
+              <AppText isMono colorType="primary">
+                {activePrescription?.prescriptionNumber || 'RX-99214'}
+              </AppText>
             </AppText>
             <AppText variant="caption" colorType="muted">
               Patient: {activePrescription?.patientName || 'Ali Khan'} • Non-Integrated POS Mode
             </AppText>
           </View>
-          <AppBadge label="+10 Pts" variant="accent" />
+          <AppBadge label="+10 Pts" variant="accent" isMono={true} />
         </View>
         <AppText variant="caption" colorType="muted" style={{ marginTop: 8 }}>
           Verify and input exact dispensed quantities for each prescribed item below:
@@ -143,13 +144,17 @@ export const DispenseConfirmationScreen = ({ navigation, route }) => {
 
       {/* Scanned Items Dispense List */}
       <AppText variant="titleMedium" colorType="primary" style={styles.sectionTitle}>
-        Prescribed SKUs ({scannedItems.length})
+        Prescribed SKUs (
+        <AppText isMono colorType="primary">
+          {scannedItems.length}
+        </AppText>
+        )
       </AppText>
 
       {scannedItems.map((item) => {
         const isSubstituted = Boolean(item.substitutedBrand);
         const displayName = isSubstituted
-          ? item.substitutedBrand.name
+          ? item.substitutedBrand?.brandName || item.substitutedBrand?.name || item.brandName
           : item.brandName || item.genericName;
 
         return (
@@ -166,7 +171,10 @@ export const DispenseConfirmationScreen = ({ navigation, route }) => {
                   Generic: {item.genericName}
                 </AppText>
                 <AppText variant="caption" colorType="muted">
-                  Prescribed Qty: <AppText variant="caption" colorType="brand">{item.prescribedQuantity}</AppText>
+                  Prescribed Qty:{' '}
+                  <AppText variant="monoSmall" colorType="brand">
+                    {item.prescribedQuantity}
+                  </AppText>
                 </AppText>
 
                 {isSubstituted && (
@@ -202,7 +210,7 @@ export const DispenseConfirmationScreen = ({ navigation, route }) => {
                 style={styles.substituteBtn}
               >
                 <AppText variant="caption" colorType="brand" style={{ fontWeight: '600' }}>
-                  {isSubstituted ? 'Change Substitute Brand' : 'Substitute Alternative Brand &gt;'}
+                  {isSubstituted ? 'Change Substitute Brand' : 'Substitute Brand'}
                 </AppText>
               </TouchableOpacity>
             </View>
@@ -221,24 +229,24 @@ export const DispenseConfirmationScreen = ({ navigation, route }) => {
 
         <View style={styles.summaryRow}>
           <AppText variant="bodyMedium" colorType="muted">Total Dispensed Units:</AppText>
-          <AppText variant="bodyMediumMedium" colorType="primary">{totalDispensedUnits} units</AppText>
+          <AppText variant="bodyMediumMedium" isMono colorType="primary">{totalDispensedUnits} units</AppText>
         </View>
 
         <View style={styles.summaryRow}>
           <AppText variant="bodyMedium" colorType="muted">Total Trade Price (TP):</AppText>
-          <AppText variant="bodyMediumMedium" colorType="primary">PKR {totalTP.toLocaleString()}</AppText>
+          <AppText variant="bodyMediumMedium" isMono colorType="primary">PKR {totalTP.toLocaleString()}</AppText>
         </View>
 
         <View style={styles.summaryRow}>
           <AppText variant="bodyMedium" colorType="muted">Total Retail Price (MRP):</AppText>
-          <AppText variant="bodyMediumMedium" colorType="primary">PKR {totalMRP.toLocaleString()}</AppText>
+          <AppText variant="bodyMediumMedium" isMono colorType="primary">PKR {totalMRP.toLocaleString()}</AppText>
         </View>
 
         <View style={[styles.summaryDivider, { backgroundColor: colors.border?.subtle }]} />
 
         <View style={styles.summaryRow}>
           <AppText variant="bodyLargeMedium" colorType="primary">Gross Retail Margin:</AppText>
-          <AppText variant="bodyLargeMedium" colorType="success">PKR {grossMargin.toLocaleString()}</AppText>
+          <AppText variant="bodyLargeMedium" isMono colorType="success">PKR {grossMargin.toLocaleString()}</AppText>
         </View>
       </GlassCard>
 
@@ -246,17 +254,18 @@ export const DispenseConfirmationScreen = ({ navigation, route }) => {
       <GlassCard style={styles.card}>
         <View style={styles.rewardRow}>
           <MetricIconDisc variant="gold" size={40} marginRight={10}>
-            <PointsStarIcon size={20} color={isDark ? '#FFFFFF' : '#0F4761'} />
+            <PointsStarIcon size={20} color={isDark ? colors.cta.sliderKnob : colors.brand.primaryDark} />
           </MetricIconDisc>
           <View style={{ flex: 1 }}>
             <AppText variant="bodyMediumMedium" colorType="primary">
               Impact Rewards Earned
             </AppText>
             <AppText variant="caption" colorType="muted">
-              +10 PII Points & +PKR 50 Wallet balance on confirmation
+              <AppText variant="monoSmall" colorType="muted">+10</AppText> PII Points &{' '}
+              <AppText variant="monoSmall" colorType="muted">+PKR 50</AppText> Wallet balance on confirmation
             </AppText>
           </View>
-          <AppBadge label="+10 Pts" variant="accent" />
+          <AppBadge label="+10 Pts" variant="accent" isMono={true} />
         </View>
       </GlassCard>
 
@@ -271,12 +280,13 @@ export const DispenseConfirmationScreen = ({ navigation, route }) => {
 
       <View style={{ height: verticalScale(20) }} />
 
-      {/* Ported OneRx SelectMedicineModal for Dispense Substitution Search */}
+      {/* Ported OneRx 4-View SelectMedicineModal starting on View 1 (Select Medicine) */}
       <SelectMedicineModal
         visible={substituteModalVisible}
         onClose={() => setSubstituteModalVisible(false)}
         onSelectMedicine={handleSelectSubstitute}
-        tabs={['Generic', 'Therapeutic Segment', 'Brand']}
+        onNavigateSettings={() => navigation.navigate('Settings')}
+        tabs={['Generic', 'Therapeutic Segment']}
       />
     </AppScreenContainer>
   );

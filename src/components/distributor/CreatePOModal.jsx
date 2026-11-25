@@ -227,6 +227,7 @@ export const CreatePOModal = ({
             value={unitTP}
             onChangeText={setUnitTP}
             keyboardType="numeric"
+            isMono={true}
           />
 
           {/* Dedicated SKU Row: Brand Name + Unit TP & Stepper + Live Line Subtotal */}
@@ -263,6 +264,7 @@ export const CreatePOModal = ({
                   {
                     color: colors.text?.secondary || (isDark ? '#94A3B8' : '#64748B'),
                     fontFamily: fontFamilies.monoMedium || 'DMMono-Medium',
+                    fontVariant: ['tabular-nums'],
                   },
                 ]}
                 numberOfLines={1}
@@ -289,6 +291,7 @@ export const CreatePOModal = ({
                     {
                       color: colors.text?.primary || (isDark ? '#FFFFFF' : '#0F4761'),
                       fontFamily: fontFamilies.monoMedium || 'DMMono-Medium',
+                      fontVariant: ['tabular-nums'],
                     },
                   ]}
                   numberOfLines={1}
@@ -342,6 +345,7 @@ export const CreatePOModal = ({
                 {
                   color: colors.brand?.primary || '#009BA9',
                   fontFamily: fontFamilies.monoMedium || 'DMMono-Medium',
+                  fontVariant: ['tabular-nums'],
                 },
               ]}
             >

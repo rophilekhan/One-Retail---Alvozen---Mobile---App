@@ -238,6 +238,11 @@ export const ImpactWalletScreen = ({ navigation }) => {
         visible={isWithdrawModalVisible}
         onClose={() => setIsWithdrawModalVisible(false)}
         onSelectMethod={handleSelectMethod}
+        selectedMethod={selectedWithdrawMethod}
+        linkedAccounts={{
+          jazzcash: enteredAccountNumber,
+          bank: bankDetails.accountNumber,
+        }}
       />
       <WithdrawAccountDetailsModal
         visible={isAccountDetailsModalVisible}
@@ -285,6 +290,7 @@ export const ImpactWalletScreen = ({ navigation }) => {
           setIsReviewModalVisible(true);
         }}
         availableBalance="48,500"
+        minAmount={selectedWithdrawMethod?.id === 'bank' ? '2,500' : '500'}
       />
       <ReviewConfirmWithdrawalModal
         visible={isReviewModalVisible}

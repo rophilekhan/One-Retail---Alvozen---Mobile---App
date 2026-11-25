@@ -36,14 +36,14 @@ export const WalletEarningsCard = ({
       <View style={styles.walletMetricsRow}>
         <View style={{ flex: 1 }}>
           <AppText variant="caption" colorType="muted">Available to Cashout</AppText>
-          <AppText variant="headlineMedium" colorType="primary">
+          <AppText variant="headlineMedium" isMono colorType="primary">
             PKR {walletBalance.toLocaleString()}
           </AppText>
         </View>
 
         <View style={{ flex: 1, alignItems: 'flex-end' }}>
           <AppText variant="caption" colorType="muted">Pending Clearance</AppText>
-          <AppText variant="titleLarge" colorType="accent">
+          <AppText variant="titleLarge" isMono colorType="accent">
             PKR {pendingCashout.toLocaleString()}
           </AppText>
         </View>
@@ -53,15 +53,15 @@ export const WalletEarningsCard = ({
       <View style={[styles.earningsSplitBox, { backgroundColor: isDark ? 'rgba(255,255,255,0.025)' : 'rgba(0,0,0,0.02)' }]}>
         <View style={styles.splitRow}>
           <AppText variant="bodySmall" colorType="muted">Rx Scans Earnings:</AppText>
-          <AppText variant="bodySmallMedium" colorType="primary">PKR 24,500</AppText>
+          <AppText variant="bodySmallMedium" isMono colorType="primary">PKR 24,500</AppText>
         </View>
         <View style={styles.splitRow}>
           <AppText variant="bodySmall" colorType="muted">Pharma Data Sharing:</AppText>
-          <AppText variant="bodySmallMedium" colorType="primary">PKR 14,000</AppText>
+          <AppText variant="bodySmallMedium" isMono colorType="primary">PKR 14,000</AppText>
         </View>
         <View style={styles.splitRow}>
           <AppText variant="bodySmall" colorType="muted">Pharma Engagement:</AppText>
-          <AppText variant="bodySmallMedium" colorType="primary">PKR 10,000</AppText>
+          <AppText variant="bodySmallMedium" isMono colorType="primary">PKR 10,000</AppText>
         </View>
       </View>
 

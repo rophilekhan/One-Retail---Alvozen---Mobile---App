@@ -112,6 +112,10 @@ export const SettingsScreen = ({ navigation }) => {
   const tierKey = useMemo(() => resolveTierFromPoints(piiScore), [piiScore]);
   const tierConfig = PHARMACY_TIERS_CONFIG[tierKey] || PHARMACY_TIERS_CONFIG.key_account;
   const tierLabel = tierConfig?.label || 'Key Account';
+  const territoryLabel =
+    pharmacy.territory && typeof pharmacy.territory === 'object'
+      ? pharmacy.territory.name || 'North Nazimabad, Karachi'
+      : pharmacy.territory || 'North Nazimabad, Karachi';
 
   const selectedContactPref = useMemo(
     () => CONTACT_PREF_OPTIONS.find((opt) => opt.id === contactPref) || CONTACT_PREF_OPTIONS[0],
@@ -169,8 +173,8 @@ export const SettingsScreen = ({ navigation }) => {
       <View style={styles.headerContainer}>
         <AppHeader
           title="Settings & Privacy"
-          onBack={() => (navigation.canGoBack() ? navigation.goBack() : null)}
-          showBack={navigation.canGoBack()}
+          onBack={() => (navigation?.canGoBack?.() ? navigation.goBack() : null)}
+          showBack={Boolean(navigation?.canGoBack?.())}
         />
       </View>
 
@@ -220,13 +224,13 @@ export const SettingsScreen = ({ navigation }) => {
                   styles.heroTerritorySubtitle,
                   typography?.caption,
                   {
-                    color: colors.text?.secondary || (isDark ? '#94A3B8' : '#64748B'),
+                    color: colors.text.secondary,
                     fontFamily: fontFamilies.primaryRegular || 'DMSans-Regular',
                   },
                 ]}
                 numberOfLines={1}
               >
-                {pharmacy.territory || 'North Nazimabad, Karachi'}
+                {territoryLabel}
               </AppText>
 
               <View style={styles.heroBadgeRow}>
@@ -498,7 +502,7 @@ export const SettingsScreen = ({ navigation }) => {
                   styles.rowTitle,
                   {
                     color: colors.text?.primary || (isDark ? '#FFFFFF' : '#020202'),
-                    fontFamilies: fontFamilies.primaryMedium || 'DMSans-Medium',
+                    fontFamily: fontFamilies.primaryMedium || 'DMSans-Medium',
                   },
                 ]}
               >
@@ -520,6 +524,7 @@ export const SettingsScreen = ({ navigation }) => {
                 label={pharmacy.dsl?.number || pharmacy.dslNumber || 'DSL-KAR-2024'}
                 variant="success"
                 size="sm"
+                isMono={true}
               />
               <ChevronRightSvg
                 size={18}

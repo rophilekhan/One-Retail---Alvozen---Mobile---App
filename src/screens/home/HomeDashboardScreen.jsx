@@ -24,7 +24,10 @@ import {
  */
 export const HomeDashboardScreen = ({ navigation }) => {
   const pharmacy = usePharmacyStore();
-  const territoryName = pharmacy.territory?.name || 'PECHS / Tariq Road, Karachi';
+  const territoryName =
+    typeof pharmacy.territory === 'string'
+      ? pharmacy.territory || 'PECHS / Tariq Road, Karachi'
+      : pharmacy.territory?.name || 'PECHS / Tariq Road, Karachi';
 
   return (
     <AppScreenContainer

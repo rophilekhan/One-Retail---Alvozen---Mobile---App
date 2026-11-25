@@ -65,6 +65,7 @@ export const AppInput = ({
   secureTextEntry = false,
   multiline = false,
   editable = true,
+  isMono = false,
   wrapperStyle,
   style,
   inputStyle,
@@ -258,7 +259,13 @@ export const AppInput = ({
               styles.textInput,
               {
                 color: colors.text?.primary || (isDark ? '#FFFFFF' : '#0F4761'),
-                fontFamily: fontFamilies.primary,
+                fontFamily:
+                  isMono && value !== undefined && value !== null && String(value).length > 0
+                    ? fontFamilies.monoMedium
+                    : fontFamilies.primary,
+                ...(isMono && value !== undefined && value !== null && String(value).length > 0
+                  ? { fontVariant: ['tabular-nums'] }
+                  : null),
                 fontSize: scaleFont(14),
                 includeFontPadding: false,
                 paddingVertical: 0,

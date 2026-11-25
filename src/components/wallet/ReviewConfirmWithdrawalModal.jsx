@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { useTheme } from '../../theme/index.js';
+import { fontFamilies } from '../../theme/typography.js';
 import { scale, verticalScale, scaleFont } from '../../theme/responsive.js';
 import {
   AppModal,
@@ -298,8 +299,9 @@ export const ReviewConfirmWithdrawalModal = ({
                 ACCOUNT NO.
               </AppText>
               <AppText
+                isMono
                 style={[
-                  styles.detailValue,
+                  styles.detailValueMono,
                   { color: colors.text.primary },
                 ]}
               >
@@ -364,8 +366,9 @@ export const ReviewConfirmWithdrawalModal = ({
             PHARMACY NTN
           </AppText>
           <AppText
+            isMono
             style={[
-              styles.detailValue,
+              styles.detailValueMono,
               { color: colors.text.primary },
             ]}
           >
@@ -395,8 +398,9 @@ export const ReviewConfirmWithdrawalModal = ({
             AMOUNT
           </AppText>
           <AppText
+            isMono
             style={[
-              styles.detailValue,
+              styles.detailValueMono,
               { color: colors.text.primary },
             ]}
           >
@@ -426,8 +430,9 @@ export const ReviewConfirmWithdrawalModal = ({
             TAX WITHHOLDING (5%)
           </AppText>
           <AppText
+            isMono
             style={[
-              styles.detailValue,
+              styles.detailValueMono,
               { color: isDark ? '#F87171' : '#DC2626' },
             ]}
           >
@@ -545,8 +550,14 @@ const styles = StyleSheet.create({
   },
   detailValue: {
     fontSize: scaleFont(14),
-    fontFamily: 'DMSans-Bold',
+    fontFamily: fontFamilies.primaryBold,
     fontWeight: '700',
+  },
+  detailValueMono: {
+    fontSize: scaleFont(14),
+    fontFamily: fontFamilies.monoMedium,
+    fontWeight: '500',
+    fontVariant: ['tabular-nums'],
   },
   dashedDivider: {
     borderBottomWidth: 1,
@@ -582,8 +593,9 @@ const styles = StyleSheet.create({
   },
   receiveAmount: {
     fontSize: scaleFont(18),
-    fontFamily: 'DMSans-Bold',
-    fontWeight: '700',
+    fontFamily: fontFamilies.monoMedium,
+    fontWeight: '500',
+    fontVariant: ['tabular-nums'],
   },
   confirmButton: {
     width: '100%',

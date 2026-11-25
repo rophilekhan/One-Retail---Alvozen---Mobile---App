@@ -2,7 +2,7 @@ import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useTheme } from '../../theme/index.js';
-import { scale, verticalScale } from '../../theme/responsive.js';
+import { scale, verticalScale, scaleFont } from '../../theme/responsive.js';
 import { GlassCard, AppText, AppBadge } from '../core/index.js';
 
 /**
@@ -36,13 +36,17 @@ export const PrescriptionsPerDayWidget = ({
           </AppText>
         </View>
 
-        <AppBadge label="+18% vs Last Wk" variant="success" size="sm" />
+        <AppBadge label="+18% vs Last Wk" variant="success" size="sm" isMono={true} />
       </View>
 
       {/* Main Stats Row */}
       <View style={styles.statsRow}>
         <View style={styles.statItem}>
-          <AppText variant="displaySmall" colorType="brand" style={styles.statVal}>
+          <AppText
+            variant="monoLarge"
+            colorType="brand"
+            style={[styles.statVal, { fontSize: scaleFont(30), lineHeight: scaleFont(34) }]}
+          >
             {todayCount}
           </AppText>
           <AppText variant="caption" colorType="muted">
@@ -53,7 +57,7 @@ export const PrescriptionsPerDayWidget = ({
         <View style={[styles.statDivider, { backgroundColor: colors.border?.subtle }]} />
 
         <View style={styles.statItem}>
-          <AppText variant="headlineSmall" colorType="primary" style={styles.statVal}>
+          <AppText variant="monoLarge" colorType="primary" style={styles.statVal}>
             {weeklyAverage}
           </AppText>
           <AppText variant="caption" colorType="muted">
@@ -84,8 +88,8 @@ export const PrescriptionsPerDayWidget = ({
                       backgroundColor: isToday
                         ? colors.brand?.primary
                         : isDark
-                        ? 'rgba(0, 155, 169, 0.45)'
-                        : 'rgba(0, 155, 169, 0.35)',
+                          ? 'rgba(0, 155, 169, 0.45)'
+                          : 'rgba(0, 155, 169, 0.35)',
                     },
                   ]}
                 />
@@ -136,8 +140,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   statVal: {
-    fontWeight: '800',
+    fontWeight: '500',
     letterSpacing: -0.5,
+    fontVariant: ['tabular-nums'],
   },
   statDivider: {
     width: 1,

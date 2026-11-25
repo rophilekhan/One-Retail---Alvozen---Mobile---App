@@ -271,7 +271,19 @@ export const OtpVerificationScreen = ({ navigation, route }) => {
                 { color: colors.text?.secondary || '#787878', fontFamily: 'DMSans-Regular' },
               ]}
             >
-              {timer > 0 ? `Code expires in ${formatTime(timer)}` : 'Code expired'}
+              {timer > 0 ? (
+                <>
+                  {'Code expires in '}
+                  <AppText
+                    isMono
+                    style={{ color: colors.text?.primary || (isDark ? '#FFFFFF' : '#0F4761') }}
+                  >
+                    {formatTime(timer)}
+                  </AppText>
+                </>
+              ) : (
+                'Code expired'
+              )}
             </AppText>
 
             <TouchableOpacity
@@ -343,7 +355,8 @@ const styles = StyleSheet.create({
     height: '100%',
     textAlign: 'center',
     fontSize: scaleFont(22),
-    fontFamily: fontFamilies.primaryMedium,
+    fontFamily: fontFamilies.monoMedium,
+    fontVariant: ['tabular-nums'],
     includeFontPadding: false,
     paddingVertical: 0,
   },

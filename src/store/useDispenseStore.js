@@ -29,19 +29,27 @@ export const useDispenseStore = create((set, get) => ({
   setScannedPrescription: (prescription) => {
     const items = Array.isArray(prescription?.items)
       ? prescription.items.map((item) => ({
+          ...item,
           id: item.id || String(Math.random()),
           brandName: item.brandName || '',
           genericName: item.genericName || '',
           genericId: item.genericId || null,
           dosageForm: item.dosageForm || '',
+          strength: item.strength || '',
           prescribedQuantity: Number(item.prescribedQuantity) || 1,
-          dispensedQuantity: Number(item.dispensedQuantity) || Number(item.prescribedQuantity) || 1,
+          dispensedQuantity:
+            item.dispensedQuantity !== undefined
+              ? Number(item.dispensedQuantity)
+              : Number(item.prescribedQuantity) || 1,
           isAvailable: item.isAvailable !== false,
           tp: Number(item.tp) || 0,
           mrp: Number(item.mrp) || 0,
           activeScheme: item.activeScheme || null,
           substitutedBrand: item.substitutedBrand || null,
           substituteReason: item.substituteReason || null,
+          alternateBrands: Array.isArray(item.alternateBrands) ? item.alternateBrands : [],
+          mappedBrands: Array.isArray(item.mappedBrands) ? item.mappedBrands : [],
+          nearbyPharmacies: Array.isArray(item.nearbyPharmacies) ? item.nearbyPharmacies : [],
         }))
       : [];
 

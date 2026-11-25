@@ -390,7 +390,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: scaleFont(18),
-    fontFamilies: fontFamilies.primaryBold,
+    fontFamily: fontFamilies.primaryBold,
     fontWeight: '700',
     letterSpacing: -0.3,
   },
@@ -455,11 +455,13 @@ const styles = StyleSheet.create({
   progressScoreText: {
     fontSize: scaleFont(12),
     fontFamily: fontFamilies.monoMedium || fontFamilies.primaryBold,
-    fontWeight: '600',
+    fontWeight: '500',
+    fontVariant: ['tabular-nums'],
   },
   progressPctText: {
     fontSize: scaleFont(11.5),
-    fontFamily: fontFamilies.primaryRegular,
+    fontFamily: fontFamilies.monoRegular || fontFamilies.mono,
+    fontVariant: ['tabular-nums'],
   },
   sectionTitleRow: {
     flexDirection: 'row',
@@ -518,7 +520,8 @@ const styles = StyleSheet.create({
   },
   tierRowRange: {
     fontSize: scaleFont(12),
-    fontFamily: fontFamilies.monoRegular || fontFamilies.primaryRegular,
+    fontFamily: fontFamilies.monoRegular || fontFamilies.mono,
+    fontVariant: ['tabular-nums'],
     marginTop: verticalScale(3),
   },
   scoreBubble: {
@@ -529,7 +532,8 @@ const styles = StyleSheet.create({
   scoreBubbleText: {
     fontSize: scaleFont(12.5),
     fontFamily: fontFamilies.monoMedium || fontFamilies.primaryBold,
-    fontWeight: '700',
+    fontWeight: '500',
+    fontVariant: ['tabular-nums'],
   },
 });
 

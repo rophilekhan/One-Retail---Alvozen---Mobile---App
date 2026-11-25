@@ -7,6 +7,7 @@ import {
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useTheme } from '../../theme/index.js';
+import { fontFamilies } from '../../theme/typography.js';
 import { scale, verticalScale, scaleFont } from '../../theme/responsive.js';
 import {
   AppModal,
@@ -162,8 +163,8 @@ export const EnterOTPModal = ({
       style={[
         styles.modalContainer,
         {
-          backgroundColor: isDark ? '#141416' : '#FFFFFF',
-          borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
+          backgroundColor: isDark ? colors.surface.sheetElevated : colors.surface.sheet,
+          borderColor: colors.border.card,
         },
       ]}
     >
@@ -200,10 +201,13 @@ export const EnterOTPModal = ({
       <AppText
         style={[
           styles.subtitle,
-          { color: isDark ? '#94A3B8' : '#64748B' },
+          { color: colors.text.secondary },
         ]}
       >
-        {`We sent a 5-digit verification code to ${phoneNumber}`}
+        {`We sent a 5-digit verification code to `}
+        <AppText variant="monoSmall" style={{ color: colors.text.primary }}>
+          {phoneNumber}
+        </AppText>
       </AppText>
 
       {/* 2. 5-digit OTP inputs */}
@@ -226,12 +230,12 @@ export const EnterOTPModal = ({
               style={[
                 styles.otpBox,
                 {
-                  backgroundColor: isDark ? '#1C1C20' : '#F8FAFC',
+                  backgroundColor: isDark ? colors.surface.inputSecondary : colors.background.secondary,
                   borderColor: isFocused
-                    ? (isDark ? '#009BA9' : '#0F4761')
+                    ? (isDark ? colors.brand.primary : colors.brand.primaryDark)
                     : isFilled
-                      ? (isDark ? '#38BDF8' : '#009BA9')
-                      : (isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.1)'),
+                      ? colors.brand.primary
+                      : colors.border.card,
                   borderWidth: isFocused ? 2 : 1,
                   color: colors.text.primary,
                 },
@@ -246,11 +250,11 @@ export const EnterOTPModal = ({
         <AppText
           style={[
             styles.timerText,
-            { color: isDark ? '#94A3B8' : '#64748B' },
+            { color: colors.text.secondary },
           ]}
         >
           {`Code expires in `}
-          <AppText style={{ color: isDark ? '#38BDF8' : '#0F4761', fontWeight: '700' }}>
+          <AppText isMono style={{ color: isDark ? colors.brand.primary : colors.brand.primaryDark }}>
             {formattedTime}
           </AppText>
         </AppText>
@@ -340,8 +344,9 @@ const styles = StyleSheet.create({
     borderRadius: scale(16),
     textAlign: 'center',
     fontSize: scaleFont(22),
-    fontFamily: 'DMSans-Bold',
-    fontWeight: '700',
+    fontFamily: fontFamilies.monoMedium,
+    fontWeight: '500',
+    fontVariant: ['tabular-nums'],
   },
   timerRow: {
     flexDirection: 'row',

@@ -55,6 +55,7 @@ export const PurchaseOrderCard = ({ po, onApprove, onDetails, style }) => {
               {
                 color: colors.brand?.primary || '#009BA9',
                 fontFamily: fontFamilies.monoMedium || 'DMMono-Medium',
+                fontVariant: ['tabular-nums'],
               },
             ]}
           >
@@ -111,7 +112,7 @@ export const PurchaseOrderCard = ({ po, onApprove, onDetails, style }) => {
           <AppText
             style={[
               styles.metricValue,
-              { color: colors.text?.primary || (isDark ? '#FFFFFF' : '#020202'), fontFamily: fontFamilies.monoMedium || 'DMMono-Medium' },
+              { color: colors.text?.primary || (isDark ? '#FFFFFF' : '#020202'), fontFamily: fontFamilies.monoMedium || 'DMMono-Medium', fontVariant: ['tabular-nums'] },
             ]}
             numberOfLines={1}
           >
@@ -141,7 +142,7 @@ export const PurchaseOrderCard = ({ po, onApprove, onDetails, style }) => {
           <AppText
             style={[
               styles.metricValue,
-              { color: colors.brand?.primary || '#009BA9', fontFamily: fontFamilies.monoMedium || 'DMMono-Medium' },
+              { color: colors.brand?.primary || '#009BA9', fontFamily: fontFamilies.monoMedium || 'DMMono-Medium', fontVariant: ['tabular-nums'] },
             ]}
             numberOfLines={1}
           >
@@ -171,7 +172,7 @@ export const PurchaseOrderCard = ({ po, onApprove, onDetails, style }) => {
           <AppText
             style={[
               styles.metricValue,
-              { color: colors.text?.primary || (isDark ? '#FFFFFF' : '#020202'), fontFamily: fontFamilies.monoMedium || 'DMMono-Medium' },
+              { color: colors.text?.primary || (isDark ? '#FFFFFF' : '#020202'), fontFamily: fontFamilies.monoMedium || 'DMMono-Medium', fontVariant: ['tabular-nums'] },
             ]}
             numberOfLines={1}
           >

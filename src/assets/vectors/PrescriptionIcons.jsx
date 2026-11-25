@@ -1,5 +1,5 @@
 import React from 'react';
-import Svg, { Path, Circle, Defs, LinearGradient as SvgLinearGradient, Stop, Rect } from 'react-native-svg';
+import Svg, { Path, Circle, Rect } from 'react-native-svg';
 import { scale } from '../../theme/responsive.js';
 import { useVectorColor } from './useVectorColor.js';
 
@@ -75,6 +75,64 @@ export const ChevronDown = ({ color, size = 12, strokeWidth = 1.8 }) => {
   return (
     <Svg width={scale(size)} height={scale(size)} viewBox="0 0 24 24" fill="none">
       <Path d="M6 9l6 6 6-6" stroke={resolvedColor} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+};
+
+export const ChevronLeftSvg = ({ color, size = 20, strokeWidth = 2 }) => {
+  const resolvedColor = useVectorColor(color);
+  return (
+    <Svg width={scale(size)} height={scale(size)} viewBox="0 0 24 24" fill="none">
+      <Path d="M15 19L8 12L15 5" stroke={resolvedColor} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+};
+
+export const ChevronRightSvg = ({ color, size = 16, strokeWidth = 1.6 }) => {
+  const resolvedColor = useVectorColor(color);
+  return (
+    <Svg width={scale(size)} height={scale(size)} viewBox="0 0 24 24" fill="none">
+      <Path d="M9 18L15 12L9 6" stroke={resolvedColor} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+};
+
+export const CloseIconSvg = ({ color, size = 24, strokeWidth = 1.8 }) => {
+  const resolvedColor = useVectorColor(color);
+  return (
+    <Svg width={scale(size)} height={scale(size)} viewBox="0 0 24 24" fill="none">
+      <Path d="M18 6L6 18M6 6L18 18" stroke={resolvedColor} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+};
+
+export const ClearCircleIconSvg = ({ color, size = 18, strokeWidth = 1.2 }) => {
+  const resolvedColor = useVectorColor(color);
+  return (
+    <Svg width={scale(size)} height={scale(size)} viewBox="0 0 24 24" fill="none">
+      <Circle cx="12" cy="12" r="9" stroke={resolvedColor} strokeWidth={strokeWidth} />
+      <Path d="M14.5 9.5L9.5 14.5M9.5 9.5L14.5 14.5" stroke={resolvedColor} strokeWidth={strokeWidth} strokeLinecap="round" />
+    </Svg>
+  );
+};
+
+export const LocationPinIcon = ({ color, size = 28, strokeWidth = 1.3 }) => {
+  const resolvedColor = useVectorColor(color);
+  return (
+    <Svg width={scale(size)} height={scale(size)} viewBox="0 0 24 24" fill="none">
+      <Path d="M12 21C16 16.8 19 12.8 19 9C19 5.13401 15.866 2 12 2C8.13401 2 5 5.13401 5 9C5 12.8 8 16.8 12 21Z" stroke={resolvedColor} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+      <Circle cx="12" cy="9" r="3" stroke={resolvedColor} strokeWidth={strokeWidth} />
+    </Svg>
+  );
+};
+
+export const MapTeardropPinIcon = ({ pinColor, dotColor, width = 28, height = 34 }) => {
+  const resolvedPin = useVectorColor(pinColor);
+  const resolvedDot = useVectorColor(dotColor);
+  return (
+    <Svg width={scale(width)} height={scale(height)} viewBox="0 0 28 34" fill="none">
+      <Path d="M14 0C6.26801 0 0 6.26801 0 14C0 24.5 14 34 14 34C14 34 28 24.5 28 14C28 6.26801 21.732 0 14 0Z" fill={resolvedPin} />
+      <Circle cx="14" cy="13" r="4.5" fill={resolvedDot} />
     </Svg>
   );
 };

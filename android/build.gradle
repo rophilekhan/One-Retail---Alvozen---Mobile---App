@@ -6,6 +6,9 @@ buildscript {
         targetSdkVersion = 36
         ndkVersion = "27.1.12297006"
         kotlinVersion = "2.2.0"
+        googlePlayServicesBaseVersion = "18.5.0"
+        googlePlayServicesMapsVersion = "19.1.0"
+        googlePlayServicesLocationVersion = "21.3.0"
     }
     repositories {
         google()
@@ -15,6 +18,17 @@ buildscript {
         classpath("com.android.tools.build:gradle")
         classpath("com.facebook.react:react-native-gradle-plugin")
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin")
+    }
+}
+
+subprojects { subproject ->
+    afterEvaluate {
+        if ((subproject.plugins.hasPlugin('android') || subproject.plugins.hasPlugin('android-library'))) {
+            android {
+                compileSdkVersion rootProject.ext.compileSdkVersion
+                buildToolsVersion rootProject.ext.buildToolsVersion
+            }
+        }
     }
 }
 

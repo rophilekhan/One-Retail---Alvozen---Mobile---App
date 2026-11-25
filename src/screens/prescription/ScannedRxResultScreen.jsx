@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet } from 'react-native';
 import {
   AppScreenContainer,
@@ -11,14 +11,12 @@ import {
 } from '../../components/core/index.js';
 import { useTheme } from '../../theme/index.js';
 import { scale, verticalScale } from '../../theme/responsive.js';
-import { usePharmacyStore } from '../../store/usePharmacyStore.js';
 import { useDispenseStore } from '../../store/useDispenseStore.js';
 import { ShieldCheckIcon } from '../../assets/vectors/index.js';
 import {
   MedicationCard,
   BrandsModal,
   SelectMedicineModal,
-  PharmacyMapView,
 } from '../../components/prescription/index.js';
 
 /**
@@ -27,7 +25,6 @@ import {
  * Direct 1:1 integration of OneRx Prescription Builder components:
  * - MedicationCard item cards with exact OneRx styling
  * - BrandsModal for Generic-ID mapped brands & unavailable alternate brands
- * - PharmacyMapView bottom sheet for live map & nearby stock availability
  * - SelectMedicineModal for substitution lookup
  *
  * @param {Object} props
@@ -35,34 +32,48 @@ import {
  * @param {Object} props.route
  */
 export const ScannedRxResultScreen = ({ navigation, route }) => {
-  const { colors, spacing, isDark } = useTheme();
+  const { colors, isDark } = useTheme();
   const storeRx = useDispenseStore((s) => s.activePrescription);
   const scannedItems = useDispenseStore((s) => s.scannedItems);
   const rx = route?.params?.rxData || route?.params?.prescription || storeRx;
-  const skuVisibilityEnabled = usePharmacyStore((s) => s.skuVisibilityEnabled);
   const { mapGenericToBrand, substituteBrand } = useDispenseStore();
 
   // Bottom Sheet States
   const [activeBrandModalItem, setActiveBrandModalItem] = useState(null);
+  const [brandModalInitialView, setBrandModalInitialView] = useState('BRANDS');
   const [selectMedicineModalVisible, setSelectMedicineModalVisible] = useState(false);
+  const lastAutoOpenedRxKeyRef = useRef(null);
 
-  // Auto-open trigger on QR scan recognition
+  // Auto-open trigger once per newly scanned prescription
   useEffect(() => {
     const rxData = route?.params?.rxData || route?.params?.prescription || rx;
     if (!rxData?.items || rxData.items.length === 0) return;
 
-    const isGenericQr = rxData.qrType === 'GENERIC' || rxData.qrType === 'GENERIC_ID_QR' || route?.params?.autoOpenGeneric;
+    const rxKey = rxData.id || rxData.prescriptionNumber || rxData.rxId;
+    if (rxKey && lastAutoOpenedRxKeyRef.current === rxKey) return;
+
+    const isGenericQr =
+      rxData.qrType === 'GENERIC' ||
+      rxData.qrType === 'GENERIC_ID_QR' ||
+      route?.params?.autoOpenGeneric;
     if (isGenericQr) {
-      const genericItem = rxData.items.find((it) => (!it.brandName && it.genericName) || it.genericId) || rxData.items[0];
+      const genericItem =
+        rxData.items.find((it) => (!it.brandName && it.genericName) || it.genericId) ||
+        rxData.items[0];
       if (genericItem) {
+        lastAutoOpenedRxKeyRef.current = rxKey;
+        setBrandModalInitialView('BRANDS');
         setActiveBrandModalItem(genericItem);
         return;
       }
     }
 
     if (route?.params?.autoOpenUnavailable) {
-      const unavailItem = rxData.items.find((it) => it.isAvailable === false) || rxData.items[0];
+      const unavailItem =
+        rxData.items.find((it) => it.isAvailable === false) || rxData.items[0];
       if (unavailItem) {
+        lastAutoOpenedRxKeyRef.current = rxKey;
+        setBrandModalInitialView('BRANDS');
         setActiveBrandModalItem(unavailItem);
       }
     }
@@ -89,7 +100,8 @@ export const ScannedRxResultScreen = ({ navigation, route }) => {
 
   const itemsList = scannedItems && scannedItems.length > 0 ? scannedItems : (rx?.items || []);
 
-  const handleOpenBrands = (item) => {
+  const handleOpenBrands = (item, targetView = 'BRANDS') => {
+    setBrandModalInitialView(targetView);
     setActiveBrandModalItem(item);
   };
 
@@ -97,11 +109,11 @@ export const ScannedRxResultScreen = ({ navigation, route }) => {
     const item = targetItem || activeBrandModalItem;
     if (!item || !selectedBrand) return;
 
-    const isGeneric = (!item.brandName && Boolean(item.genericName)) || Boolean(item.genericId);
+    const isGeneric = !item.brandName && Boolean(item.genericName || item.genericId);
     if (isGeneric) {
       mapGenericToBrand(item.id, selectedBrand);
     } else {
-      substituteBrand(item.id, selectedBrand, 'Out of Stock');
+      substituteBrand(item.id, selectedBrand, item.isAvailable === false ? 'Out of Stock' : 'Alternate Brand');
     }
 
     setActiveBrandModalItem(null);
@@ -124,12 +136,15 @@ export const ScannedRxResultScreen = ({ navigation, route }) => {
           <View style={{ flex: 1 }}>
             <View style={styles.rxNumberRow}>
               <ShieldCheckIcon size={20} color={colors.brand?.primary} style={{ marginRight: 6 }} />
-              <AppText variant="headlineSmall" colorType="primary">
+              <AppText variant="monoLarge" colorType="primary">
                 {rx?.prescriptionNumber || rx?.rxId || 'RX-99214'}
               </AppText>
             </View>
             <AppText variant="caption" colorType="muted" style={{ marginTop: 2 }}>
-              {rx?.doctorName || 'Authorized Physician'} • Date: {rx?.date || 'Today'}
+              {rx?.doctorName || 'Authorized Physician'} • Date:{' '}
+              <AppText variant="monoSmall" colorType="muted">
+                {rx?.date || 'Today'}
+              </AppText>
             </AppText>
           </View>
           <AppBadge label="Verified Digital Rx" variant="brand" />
@@ -152,7 +167,11 @@ export const ScannedRxResultScreen = ({ navigation, route }) => {
 
       {/* Items List Heading */}
       <AppText variant="titleMedium" colorType="primary" style={styles.sectionTitle}>
-        Prescribed Items & Availability ({itemsList.length})
+        Prescribed Items & Availability (
+        <AppText isMono colorType="primary">
+          {itemsList.length}
+        </AppText>
+        )
       </AppText>
 
       {/* Exact OneRx MedicationCard Item List */}
@@ -174,8 +193,9 @@ export const ScannedRxResultScreen = ({ navigation, route }) => {
             tp={item.tp}
             mrp={item.mrp}
             activeScheme={item.activeScheme}
-            onPressBrands={() => handleOpenBrands(item)}
-            onPressCard={isGenericItem ? () => handleOpenBrands(item) : undefined}
+            onPressBrands={() => handleOpenBrands(item, 'BRANDS')}
+            onPressPharmacies={() => handleOpenBrands(item, 'PHARMACIES')}
+            onPressCard={(isGenericItem || item.isAvailable === false) ? () => handleOpenBrands(item, 'BRANDS') : undefined}
           />
         );
       })}
@@ -191,16 +211,17 @@ export const ScannedRxResultScreen = ({ navigation, route }) => {
 
       <View style={{ height: verticalScale(20) }} />
 
-      {/* Exact OneRx BrandsModal (multi-step: Alternate Brands -> Nearby Medical Stores -> Map Location) */}
+      {/* Exact OneRx 4-View Modal (opens directly on View 4 'BRANDS' or View 2 'PHARMACIES') */}
       <BrandsModal
         visible={Boolean(activeBrandModalItem)}
         onClose={() => setActiveBrandModalItem(null)}
         medicine={activeBrandModalItem || {}}
+        initialViewState={brandModalInitialView}
         onSelectBrand={(selectedBrand) => handleSelectAlternateOrMappedBrand(activeBrandModalItem, selectedBrand)}
         onNavigateSettings={() => navigation.navigate('Settings')}
       />
 
-      {/* Exact OneRx SelectMedicineModal (with MedicineSearchView, MedicineBrandsView, PharmacyMapView) */}
+      {/* Exact OneRx SelectMedicineModal */}
       <SelectMedicineModal
         visible={selectMedicineModalVisible}
         onClose={() => setSelectMedicineModalVisible(false)}

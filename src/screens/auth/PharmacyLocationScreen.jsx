@@ -234,7 +234,11 @@ export const PharmacyLocationScreen = ({ navigation, route }) => {
         selectedCoordinates={coordinates}
         onAddLocation={({ address: newAddr, latitude, longitude }) => {
           if (newAddr) setAddress(newAddr);
-          if (latitude && longitude) setCoordinates({ latitude, longitude });
+          const lat = Number(latitude);
+          const lng = Number(longitude);
+          if (Number.isFinite(lat) && Number.isFinite(lng)) {
+            setCoordinates({ latitude: lat, longitude: lng });
+          }
         }}
       />
     </AuthScreenContainer>

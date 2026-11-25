@@ -179,6 +179,7 @@ export const BADGE_GRADIENTS = {
 export const MetricIconDisc = memo(({
   isDark: propIsDark,
   size = 38,
+  disableSizeScale = false,
   variant = 'default',
   style,
   marginRight = 0,
@@ -189,7 +190,7 @@ export const MetricIconDisc = memo(({
 
   const gradient = BADGE_GRADIENTS[variant] || BADGE_GRADIENTS.default;
   const colors = isDark ? gradient.dark : gradient.light;
-  const discSize = scale(size);
+  const discSize = disableSizeScale ? size : scale(size);
   const discRadius = discSize / 2;
 
   const defaultIconColor = isDark ? '#FFFFFF' : (theme.colors?.brand?.primaryDark || '#0F4761');

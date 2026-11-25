@@ -6,6 +6,7 @@ import com.facebook.react.ReactApplication
 import com.facebook.react.ReactHost
 import com.facebook.react.ReactNativeApplicationEntryPoint.loadReactNative
 import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
+import com.google.android.gms.maps.MapsInitializer
 
 class MainApplication : Application(), ReactApplication {
 
@@ -22,6 +23,13 @@ class MainApplication : Application(), ReactApplication {
 
   override fun onCreate() {
     super.onCreate()
+    try {
+      MapsInitializer.initialize(applicationContext, MapsInitializer.Renderer.LATEST) { _ ->
+        // Use latest Google Maps SDK renderer on Android
+      }
+    } catch (_: Throwable) {
+      // Non-fatal if Play Services Maps is unavailable on test/emulator images
+    }
     loadReactNative(this)
   }
 }

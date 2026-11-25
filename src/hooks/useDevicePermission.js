@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Platform, PermissionsAndroid, AppState, Linking } from 'react-native';
+import Geolocation from '@react-native-community/geolocation';
 import { Camera } from 'react-native-vision-camera';
 
 /**
@@ -99,9 +100,19 @@ export const useDevicePermission = (type = 'camera', autoRequest = true) => {
 
         // Trigger native OS dialog
         if (typeof PermissionsAndroid?.request === 'function') {
+          const dialogCopy =
+            type === 'location'
+              ? {
+                  title: 'Location Permission',
+                  message: 'OneRetail needs location access to pin your pharmacy address on the map.',
+                }
+              : {
+                  title: 'Camera Permission',
+                  message: 'OneRetail needs camera access to scan prescription QR codes.',
+                };
+
           const result = await PermissionsAndroid.request(androidPermission, {
-            title: 'Camera Permission',
-            message: 'OneRetail needs camera access to scan prescription QR codes.',
+            ...dialogCopy,
             buttonPositive: 'Allow',
             buttonNegative: 'Deny',
           });
@@ -134,6 +145,14 @@ export const useDevicePermission = (type = 'camera', autoRequest = true) => {
               return 'blocked';
             }
           }
+        } else if (type === 'location' && typeof Geolocation?.requestAuthorization === 'function') {
+          const auth = await Geolocation.requestAuthorization('whenInUse');
+          if (auth === 'granted') {
+            setStatus('granted');
+            return 'granted';
+          }
+          setStatus(auth === 'denied' || auth === 'restricted' ? 'blocked' : 'denied');
+          return auth === 'denied' || auth === 'restricted' ? 'blocked' : 'denied';
         }
       }
     } catch (err) {

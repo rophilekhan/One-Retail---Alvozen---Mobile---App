@@ -128,9 +128,16 @@ export const TierGemIcon = ({ tier = 'key account', size = 32, isApex = false, s
 
 /**
  * Official Bank Icon from src/assets/images/Bank icon.svg
+ * Tight viewBox trims empty padding so strokes fill 28x28 boldly.
  */
-export const BankOfficialIcon = ({ size = 24, color = '#020202' }) => (
-  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+export const BankOfficialIcon = ({ size = 28, width, height, color = '#020202' }) => (
+  <Svg
+    width={width ?? size}
+    height={height ?? size}
+    viewBox="1.25 1.25 21.5 21.5"
+    preserveAspectRatio="xMidYMid meet"
+    fill="none"
+  >
     <Path
       d="M12.125 5.75H12M12.25 5.75C12.25 5.88807 12.1381 6 12 6C11.8619 6 11.75 5.88807 11.75 5.75C11.75 5.61193 11.8619 5.5 12 5.5C12.1381 5.5 12.25 5.61193 12.25 5.75Z"
       stroke={color}
@@ -168,6 +175,70 @@ export const BankOfficialIcon = ({ size = 24, color = '#020202' }) => (
     />
   </Svg>
 );
+
+/**
+ * Official JazzCash Brand Mark Vector (Tight viewBox, bold high-contrast interlock)
+ */
+export const JazzCashOfficialIcon = ({ size = 28, width, height }) => (
+  <Svg
+    width={width ?? size}
+    height={height ?? size}
+    viewBox="1.5 1.5 25 25"
+    preserveAspectRatio="xMidYMid meet"
+    fill="none"
+  >
+    <Defs>
+      <LinearGradient id="jcAmber" x1="2" y1="2" x2="15" y2="26" gradientUnits="userSpaceOnUse">
+        <Stop offset="0%" stopColor="#FFD200" />
+        <Stop offset="100%" stopColor="#F59E0B" />
+      </LinearGradient>
+      <LinearGradient id="jcRed" x1="12" y1="2" x2="26" y2="26" gradientUnits="userSpaceOnUse">
+        <Stop offset="0%" stopColor="#EF233C" />
+        <Stop offset="100%" stopColor="#D90429" />
+      </LinearGradient>
+    </Defs>
+    {/* Red interlocking right crescent */}
+    <Path
+      d="M12.4 2H26C20.2 7.5 20.2 20.5 26 26H9.5C14.2 21.8 16.4 16.8 16 11.5C15.7 7.2 14.2 4.2 12.4 2Z"
+      fill="url(#jcRed)"
+    />
+    {/* Amber-gold J wing */}
+    <Path
+      d="M8.2 2H12.6C15.6 5.8 16.2 11.4 14.2 16.4C12.4 20.8 8 24.4 2 25.8C5.6 22.6 8 19.2 8.2 15.2V2Z"
+      fill="url(#jcAmber)"
+    />
+  </Svg>
+);
+
+/**
+ * Official Easypaisa Brand Mark Vector (Tight viewBox, theme-adaptive dark/light ring)
+ */
+export const EasypaisaOfficialIcon = ({ size = 28, width, height, isDark = false }) => {
+  const ringColor = isDark ? '#F8FAFC' : '#1E293B';
+  const smileColor = isDark ? '#22C55E' : '#00A859';
+  return (
+    <Svg
+      width={width ?? size}
+      height={height ?? size}
+      viewBox="1.5 1.5 25 25"
+      preserveAspectRatio="xMidYMid meet"
+      fill="none"
+    >
+      {/* Top bold "e" ring (opposite winding ensures crisp hollow punch) */}
+      <Path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M14 2C20.4 2 25.5 5.1 25.5 9C25.5 12.9 20.4 16 14 16C7.6 16 2.5 12.9 2.5 9C2.5 5.1 7.6 2 14 2ZM14 6.4C10.8 6.4 8.2 7.5 8.2 9C8.2 10.5 10.8 11.6 14 11.6C17.2 11.6 19.8 10.5 19.8 9C19.8 7.5 17.2 6.4 14 6.4Z"
+        fill={ringColor}
+      />
+      {/* Bottom emerald smile arc */}
+      <Path
+        d="M2.2 15.2C5.8 20.2 11.8 21.8 17.6 20C20 19.2 21.6 18.2 22.6 17L25.8 19.8C23.2 23.8 18.5 26 13.4 25.8C7.6 25.6 2.8 21.6 2 16C1.9 15.5 2 15 2.2 15.2Z"
+        fill={smileColor}
+      />
+    </Svg>
+  );
+};
 
 /**
  * Official Money Coin Icon from src/assets/images/money icon.svg

@@ -119,6 +119,7 @@ export const TerritoryBenchmarkBarChart = ({
                   label={item.varianceLabel}
                   variant={item.isPositive ? 'success' : 'warning'}
                   size="sm"
+                  isMono={true}
                 />
               </View>
 
@@ -271,8 +272,10 @@ const styles = StyleSheet.create({
     fontSize: scaleFont(11.5),
   },
   monoValue: {
+    fontFamily: fontFamilies.monoMedium || 'DMMono-Medium',
     fontSize: scaleFont(12),
-    fontWeight: '600',
+    fontWeight: '500',
+    fontVariant: ['tabular-nums'],
   },
   svgBarWrap: {
     width: '100%',

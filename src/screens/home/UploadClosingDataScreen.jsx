@@ -203,7 +203,7 @@ export const UploadClosingDataScreen = ({ navigation }) => {
               <AppText variant="titleMedium" colorType="primary">
                 1. Reporting Period
               </AppText>
-              <AppBadge label="+25 Pts" variant="brand" size="sm" />
+              <AppBadge label="+25 Pts" variant="brand" size="sm" isMono={true} />
             </View>
             <AppText variant="caption" colorType="muted" style={styles.cardSubtext}>
               Select the dispensary period for your de-identified sales movement
@@ -279,6 +279,7 @@ export const UploadClosingDataScreen = ({ navigation }) => {
                             ? (colors.text?.primary || (isDark ? '#FFFFFF' : darkPrimary))
                             : (isDark ? 'rgba(255, 255, 255, 0.42)' : '#8E99A4'),
                           fontFamily: closingDate ? (fontFamilies.monoMedium || fontFamilies.primaryMedium) : fontFamilies.regular,
+                          ...(closingDate ? { fontVariant: ['tabular-nums'] } : null),
                         },
                       ]}
                     >
@@ -446,7 +447,7 @@ export const UploadClosingDataScreen = ({ navigation }) => {
                 4. Recent Closing Uploads
               </AppText>
               <AppText variant="caption" colorType="muted">
-                {`${historyList.length} Uploads`}
+                <AppText variant="monoSmall" colorType="muted">{historyList.length}</AppText> Uploads
               </AppText>
             </View>
             <AppText variant="caption" colorType="muted" style={styles.cardSubtext}>
@@ -653,6 +654,7 @@ const styles = StyleSheet.create({
   },
   fileSizeText: {
     fontFamily: fontFamilies.mono,
+    fontVariant: ['tabular-nums'],
     fontSize: scaleFont(11),
     marginTop: verticalScale(2),
   },
@@ -689,6 +691,7 @@ const styles = StyleSheet.create({
   },
   historyDate: {
     fontFamily: fontFamilies.monoMedium,
+    fontVariant: ['tabular-nums'],
     fontSize: scaleFont(12),
     letterSpacing: 0.3,
   },
@@ -698,12 +701,14 @@ const styles = StyleSheet.create({
   },
   historySkuText: {
     fontFamily: fontFamilies.mono,
+    fontVariant: ['tabular-nums'],
     fontSize: scaleFont(11),
   },
   historyPtsText: {
     fontFamily: fontFamilies.monoMedium,
+    fontWeight: '500',
+    fontVariant: ['tabular-nums'],
     fontSize: scaleFont(11),
-    fontWeight: '600',
   },
 });
 

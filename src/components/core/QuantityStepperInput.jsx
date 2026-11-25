@@ -147,6 +147,7 @@ export const QuantityStepperInput = ({
           {
             color: colors.text?.primary || (isDark ? '#FFFFFF' : '#0F4761'),
             fontFamily: fontFamilies.monoMedium || 'DMMono-Medium',
+            fontVariant: ['tabular-nums'],
           },
         ]}
         accessibilityLabel="Quantity input"
@@ -213,8 +214,9 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'center',
     fontSize: scaleFont(14),
-    fontWeight: '600',
+    fontWeight: '500',
     fontFamily: fontFamilies.monoMedium || 'DMMono-Medium',
+    fontVariant: ['tabular-nums'],
     paddingVertical: 0,
     includeFontPadding: false,
     marginHorizontal: scale(2),

@@ -84,4 +84,36 @@ describe('OneRetail Exact Theme & Core UI Kit', () => {
       renderer.unmount();
     });
   }, 30000);
+
+  test('AppText and AppBadge safely coerce plain object props instead of crashing React', async () => {
+    const territoryObj = {
+      id: 'default',
+      name: 'PECHS / Tariq Road, Karachi',
+      isDefault: true,
+    };
+    const tierObj = { id: 'key', name: 'Key Account', isDefault: true };
+
+    let renderer;
+    await ReactTestRenderer.act(async () => {
+      renderer = ReactTestRenderer.create(
+        <ThemeProvider initialMode="light">
+          <AppScreenContainer>
+            <AppText>{territoryObj}</AppText>
+            <AppText>
+              Nested <AppText>{tierObj}</AppText>
+            </AppText>
+            <AppBadge label={tierObj} variant="brand" />
+          </AppScreenContainer>
+        </ThemeProvider>
+      );
+    });
+
+    const treeText = JSON.stringify(renderer.toJSON());
+    expect(treeText).toContain('PECHS / Tariq Road, Karachi');
+    expect(treeText).toContain('Key Account');
+
+    await ReactTestRenderer.act(async () => {
+      renderer.unmount();
+    });
+  });
 });

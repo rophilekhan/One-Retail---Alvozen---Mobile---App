@@ -618,9 +618,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   schemePillText: {
+    ...typography.monoBadge,
     fontSize: scaleFont(11),
-    fontFamily: fontFamilies.primaryBold,
-    fontWeight: '700',
   },
   neutralSchemePill: {
     paddingHorizontal: scale(8),

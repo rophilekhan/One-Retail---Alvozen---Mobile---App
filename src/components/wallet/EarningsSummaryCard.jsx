@@ -195,6 +195,7 @@ const styles = StyleSheet.create({
     fontSize: scaleFont(38),
     lineHeight: scaleFont(44),
     fontFamily: fontFamilies.mono,
+    fontVariant: ['tabular-nums'],
     color: '#FFFFFF',
     letterSpacing: -0.8,
   },
@@ -247,12 +248,14 @@ const styles = StyleSheet.create({
   columnAmountMono: {
     fontSize: scaleFont(13.5),
     fontFamily: fontFamilies.mono,
+    fontVariant: ['tabular-nums'],
     color: '#FFFFFF',
     letterSpacing: -0.2,
   },
   columnCurrencyUnit: {
     fontSize: scaleFont(12.5),
     fontFamily: fontFamilies.monoMedium || fontFamilies.mono,
+    fontVariant: ['tabular-nums'],
     color: 'rgba(255, 255, 255, 0.9)',
   },
   divider: {

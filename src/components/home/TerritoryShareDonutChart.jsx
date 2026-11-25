@@ -110,6 +110,7 @@ export const TerritoryShareDonutChart = ({
                 {
                   color: colors.text.primary,
                   fontFamily: fontFamilies.monoMedium || 'DMMono-Medium',
+                  fontVariant: ['tabular-nums'],
                 },
               ]}
             >
@@ -142,7 +143,11 @@ export const TerritoryShareDonutChart = ({
               { color: isDark ? '#94A3B8' : '#64748B' },
             ]}
           >
-            Top 5 brand molecules account for {totalShare.toFixed(1)}% of total verified prescription volume in {territoryName}.
+            Top 5 brand molecules account for{' '}
+            <AppText isMono style={{ color: colors.text.primary }}>
+              {totalShare.toFixed(1)}%
+            </AppText>{' '}
+            of total verified prescription volume in {territoryName}.
           </AppText>
         </View>
       </View>
@@ -173,6 +178,7 @@ export const TerritoryShareDonutChart = ({
                     {
                       color: brand.rank === 1 ? '#FFFFFF' : isDark ? '#94A3B8' : '#64748B',
                       fontFamily: fontFamilies.monoMedium || 'DMMono-Medium',
+                      fontVariant: ['tabular-nums'],
                     },
                   ]}
                 >
@@ -211,6 +217,7 @@ export const TerritoryShareDonutChart = ({
                   {
                     color: brand.color,
                     fontFamily: fontFamilies.monoMedium || 'DMMono-Medium',
+                    fontVariant: ['tabular-nums'],
                   },
                 ]}
               >

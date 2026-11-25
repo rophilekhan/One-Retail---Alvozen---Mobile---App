@@ -196,13 +196,15 @@ const styles = StyleSheet.create({
     fontSize: scaleFont(28),
     lineHeight: scaleFont(34),
     fontFamily: fontFamilies.mono,
-    fontWeight: '600',
+    fontWeight: '400',
+    fontVariant: ['tabular-nums'],
     letterSpacing: -0.5,
   },
   suffixText: {
     fontSize: scaleFont(15),
     fontFamily: fontFamilies.mono,
-    fontWeight: '500',
+    fontWeight: '400',
+    fontVariant: ['tabular-nums'],
     marginLeft: scale(6),
   },
 });

@@ -115,7 +115,7 @@ export const RxPrescriptionItemCard = ({
 
               {/* Status Badge */}
               {isGenericPrescription ? (
-                <AppBadge label="Generic ID" variant="accent" size="sm" />
+                <AppBadge label="Generic ID" variant="accent" size="sm" isMono={true} />
               ) : isSubstituted ? (
                 <AppBadge label="Substituted" variant="brand" size="sm" />
               ) : isAvailable ? (
@@ -185,29 +185,42 @@ export const RxPrescriptionItemCard = ({
         >
           <View style={styles.statInline}>
             <RegimenTimelineIcon color={colors.text.muted} size={15} style={{ marginRight: scale(4) }} />
-            <AppText style={[styles.statValue, { color: colors.text.primary }]}>
+            <AppText isMono style={[styles.statValue, { color: colors.text.primary }]}>
               {dosage}
             </AppText>
           </View>
 
           <View style={styles.statInline}>
             <ClockIcon color={colors.text.muted} size={15} style={{ marginRight: scale(4) }} />
-            <AppText style={[styles.statValue, { color: colors.text.primary }]}>
+            <AppText
+              style={[
+                styles.statValue,
+                { color: colors.text.primary, fontFamily: fontFamilies.primaryMedium },
+              ]}
+            >
               {timing}
             </AppText>
           </View>
 
           <View style={styles.statInline}>
             <CalendarIcon color={colors.text.muted} size={15} style={{ marginRight: scale(4) }} />
-            <AppText style={[styles.statValue, { color: colors.text.primary }]}>
+            <AppText isMono style={[styles.statValue, { color: colors.text.primary }]}>
               {duration}
             </AppText>
           </View>
 
           <View style={styles.statInline}>
             <PillIcon color={colors.brand?.primary} size={14} style={{ marginRight: scale(4) }} />
-            <AppText style={[styles.statValue, { color: colors.brand?.primary, fontWeight: '700' }]}>
-              Qty: {prescribedQty}
+            <AppText
+              style={[
+                styles.statValue,
+                { color: colors.brand?.primary, fontFamily: fontFamilies.primaryMedium },
+              ]}
+            >
+              Qty:{' '}
+              <AppText isMono style={[styles.statValue, { color: colors.brand?.primary }]}>
+                {prescribedQty}
+              </AppText>
             </AppText>
           </View>
         </View>
@@ -338,9 +351,10 @@ const styles = StyleSheet.create({
     marginTop: verticalScale(2),
   },
   indexText: {
-    fontFamily: fontFamilies.primaryMedium,
+    fontFamily: fontFamilies.monoMedium,
     fontSize: scaleFont(13),
-    fontWeight: '700',
+    fontWeight: '500',
+    fontVariant: ['tabular-nums'],
   },
   titleCol: {
     flex: 1,
@@ -408,7 +422,8 @@ const styles = StyleSheet.create({
   },
   statValue: {
     fontSize: scaleFont(11.5),
-    fontFamily: fontFamilies.primaryMedium,
+    fontFamily: fontFamilies.monoMedium,
+    fontVariant: ['tabular-nums'],
   },
   pricingRow: {
     flexDirection: 'row',
@@ -437,9 +452,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   schemeChipText: {
+    ...typography.monoBadge,
     fontSize: scaleFont(10.5),
-    fontFamily: fontFamilies.primaryBold,
-    fontWeight: '700',
   },
   actionButton: {
     flexDirection: 'row',

@@ -372,7 +372,11 @@ export const UnavailableBrandSheet = ({
               <View>
                 <View style={styles.sectionHeadingWrap}>
                   <AppText style={[styles.sectionHeading, { color: colors.text.primary }]}>
-                    Network Stores with In-Stock SKU ({nearbyPharmacies.length})
+                    Network Stores with In-Stock SKU (
+                    <AppText isMono style={{ color: colors.text.primary }}>
+                      {nearbyPharmacies.length}
+                    </AppText>
+                    )
                   </AppText>
                   <AppText style={[styles.sectionSubheading, { color: colors.text.muted }]}>
                     Reciprocal SKU Visibility active • Real-time verified inventory
@@ -441,7 +445,16 @@ export const UnavailableBrandSheet = ({
                                 { color: colors.status?.available || '#49C88F' },
                               ]}
                             >
-                              {pharm.stockUnits} units in stock
+                              <AppText
+                                isMono
+                                style={[
+                                  styles.inStockText,
+                                  { color: colors.status?.available || '#49C88F', fontWeight: '500' },
+                                ]}
+                              >
+                                {pharm.stockUnits}
+                              </AppText>{' '}
+                              units in stock
                             </AppText>
                           </View>
 

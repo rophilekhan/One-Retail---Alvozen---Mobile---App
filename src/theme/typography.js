@@ -4,9 +4,12 @@ import { scaleFont } from './responsive.js';
 export const fontFamilies = {
   primaryLight: 'DMSans-Light',
   primary: 'DMSans-Regular',
+  primaryRegular: 'DMSans-Regular',
+  regular: 'DMSans-Regular',
   primaryMedium: 'DMSans-Medium',
   primaryBold: 'DMSans-Medium', // Android safe mapping: DMSans-Medium with bold weight
   mono: 'DMMono-Regular',
+  monoRegular: 'DMMono-Regular',
   monoMedium: 'DMMono-Medium',
 };
 
@@ -101,19 +104,37 @@ export const typography = {
     fontWeight: fontWeights.medium,
     lineHeight: scaleFont(12),
   },
-  // Barcode numbers, SKU codes, prices, quantity counters
+  // Barcode numbers, SKU codes, prices, quantity counters, KPIs
+  monoLarge: {
+    fontFamily: fontFamilies.monoMedium,
+    fontSize: scaleFont(24),
+    fontWeight: fontWeights.medium,
+    lineHeight: scaleFont(30),
+    letterSpacing: -0.3,
+    fontVariant: ['tabular-nums'],
+  },
   monoClinical: {
     fontFamily: fontFamilies.monoMedium,
     fontSize: scaleFont(13),
     fontWeight: fontWeights.medium,
     lineHeight: scaleFont(18),
     letterSpacing: 0.2,
+    fontVariant: ['tabular-nums'],
   },
   monoSmall: {
     fontFamily: fontFamilies.mono,
     fontSize: scaleFont(11),
     fontWeight: fontWeights.regular,
     lineHeight: scaleFont(14),
+    fontVariant: ['tabular-nums'],
+  },
+  monoBadge: {
+    fontFamily: fontFamilies.monoMedium,
+    fontSize: scaleFont(10),
+    fontWeight: fontWeights.medium,
+    lineHeight: scaleFont(12),
+    letterSpacing: 0.2,
+    fontVariant: ['tabular-nums'],
   },
 };
 

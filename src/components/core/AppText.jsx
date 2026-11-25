@@ -14,11 +14,34 @@ import { useTheme } from '../../theme/index.js';
  * @param {Object} [props.style]
  * @param {React.ReactNode} props.children
  */
+const sanitizeTextChild = (node) => {
+  if (node === null || node === undefined || typeof node === 'boolean') {
+    return node;
+  }
+  if (typeof node === 'string' || typeof node === 'number') {
+    return node;
+  }
+  if (React.isValidElement(node)) {
+    return node;
+  }
+  if (Array.isArray(node)) {
+    return node.map(sanitizeTextChild);
+  }
+  if (typeof node === 'object') {
+    const candidate = node.name ?? node.label ?? node.title ?? node.number ?? '';
+    return typeof candidate === 'string' || typeof candidate === 'number'
+      ? candidate
+      : '';
+  }
+  return String(node);
+};
+
 export const AppText = ({
   variant = 'bodyMedium',
   colorType = 'primary',
   color,
   align = 'left',
+  isMono = false,
   style,
   children,
   ...rest
@@ -26,6 +49,16 @@ export const AppText = ({
   const { typography, colors } = useTheme();
 
   const variantStyle = typography?.[variant] || typography?.bodyMedium || {};
+  const isMonoVariant =
+    isMono || (typeof variant === 'string' && variant.startsWith('mono'));
+  const monoOverrideStyle = isMonoVariant
+    ? {
+        fontVariant: ['tabular-nums'],
+        ...(isMono && !(typeof variant === 'string' && variant.startsWith('mono'))
+          ? { fontFamily: typography?.monoClinical?.fontFamily || 'DMMono-Medium' }
+          : null),
+      }
+    : null;
 
   // Clean, theme-driven semantic color mapping
   const resolveColor = () => {
@@ -62,11 +95,12 @@ export const AppText = ({
       style={[
         styles.base,
         variantStyle,
+        monoOverrideStyle,
         { color: resolveColor(), textAlign: align },
         style,
       ]}
     >
-      {children}
+      {sanitizeTextChild(children)}
     </Text>
   );
 };

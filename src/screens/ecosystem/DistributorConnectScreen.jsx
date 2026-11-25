@@ -289,7 +289,7 @@ export const DistributorConnectScreen = ({ navigation, route }) => {
         ) : null}
       </GlassCard>
     ),
-    [colors, isDark, spacing, radii, typography, fontFamilies, searchQuery, activeTab]
+    [colors, isDark, spacing, searchQuery, activeTab]
   );
 
   return (
@@ -350,6 +350,7 @@ export const DistributorConnectScreen = ({ navigation, route }) => {
                     {
                       color: colors.brand?.primary || '#009BA9',
                       fontFamily: fontFamilies.monoMedium || 'DMMono-Medium',
+                      fontVariant: ['tabular-nums'],
                     },
                   ]}
                 >
@@ -391,6 +392,7 @@ export const DistributorConnectScreen = ({ navigation, route }) => {
                     {
                       color: colors.brand?.primary || '#009BA9',
                       fontFamily: fontFamilies.monoMedium || 'DMMono-Medium',
+                      fontVariant: ['tabular-nums'],
                     },
                   ]}
                 >
@@ -436,6 +438,7 @@ export const DistributorConnectScreen = ({ navigation, route }) => {
                     {
                       color: colors.brand?.accent || '#FB6B03',
                       fontFamily: fontFamilies.monoMedium || 'DMMono-Medium',
+                      fontVariant: ['tabular-nums'],
                     },
                   ]}
                 >
@@ -477,6 +480,7 @@ export const DistributorConnectScreen = ({ navigation, route }) => {
                     {
                       color: colors.brand?.accent || '#FB6B03',
                       fontFamily: fontFamilies.monoMedium || 'DMMono-Medium',
+                      fontVariant: ['tabular-nums'],
                     },
                   ]}
                 >

@@ -31,7 +31,11 @@ export const PiiActivitiesCard = ({ piiScore = 842, tier = 'key_account' }) => {
       <View style={styles.sectionHeader}>
         <View style={{ flex: 1 }}>
           <AppText variant="titleMedium" colorType="primary">
-            PII Points System ({piiScore} pts)
+            PII Points System (
+            <AppText isMono colorType="primary">
+              {piiScore} pts
+            </AppText>
+            )
           </AppText>
           <AppText variant="caption" colorType="muted">
             {`Composite platform score earned in ${tierTheme.label} Tier`}
@@ -56,11 +60,13 @@ export const PiiActivitiesCard = ({ piiScore = 842, tier = 'key_account' }) => {
             Digital Prescription QR Scans
           </AppText>
           <AppText variant="caption" colorType="muted">
-            34 Scans confirmed this month (40% Weight)
+            <AppText variant="monoSmall" colorType="muted">34</AppText> Scans confirmed this month (
+            <AppText variant="monoSmall" colorType="muted">40%</AppText> Weight)
           </AppText>
         </View>
         <AppBadge
           label="+340 Pts"
+          isMono={true}
           style={{
             backgroundColor: isDark ? 'rgba(0, 155, 169, 0.15)' : '#E0F7FA',
             borderColor: tierTheme.accentColor,
@@ -78,11 +84,13 @@ export const PiiActivitiesCard = ({ piiScore = 842, tier = 'key_account' }) => {
             Data Sharing with Pharma
           </AppText>
           <AppText variant="caption" colorType="muted">
-            28 Consecutive days closing sync (35% Weight)
+            <AppText variant="monoSmall" colorType="muted">28</AppText> Consecutive days closing sync (
+            <AppText variant="monoSmall" colorType="muted">35%</AppText> Weight)
           </AppText>
         </View>
         <AppBadge
           label="+280 Pts"
+          isMono={true}
           style={{
             backgroundColor: isDark ? 'rgba(168, 85, 247, 0.15)' : '#F3E8FF',
             borderColor: isDark ? '#C084FC' : '#9333EA',
@@ -100,11 +108,13 @@ export const PiiActivitiesCard = ({ piiScore = 842, tier = 'key_account' }) => {
             Digital Pharma Engagement
           </AppText>
           <AppText variant="caption" colorType="muted">
-            8 Surveys & clinical modules completed (25% Weight)
+            <AppText variant="monoSmall" colorType="muted">8</AppText> Surveys & clinical modules completed (
+            <AppText variant="monoSmall" colorType="muted">25%</AppText> Weight)
           </AppText>
         </View>
         <AppBadge
           label="+222 Pts"
+          isMono={true}
           style={{
             backgroundColor: isDark ? 'rgba(255, 122, 0, 0.15)' : '#FFF3E0',
             borderColor: isDark ? '#FFA043' : '#FF6B00',

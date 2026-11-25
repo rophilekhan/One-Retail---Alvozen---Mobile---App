@@ -9,6 +9,7 @@ import {
   PointTransactionCard,
   FilterTabs,
   SelectWithdrawMethodModal,
+  CashoutWithdrawModal,
   WithdrawAccountDetailsModal,
   WithdrawBankTransferModal,
   EnterOTPModal,
@@ -18,6 +19,13 @@ import {
   ImpactScoreModal,
   PiiActivitiesCard,
 } from '../src/components/wallet/index.js';
+import { MetricIconDisc } from '../src/components/core/index.js';
+import {
+  JazzCashOfficialIcon,
+  EasypaisaOfficialIcon,
+  BankOfficialIcon,
+} from '../src/assets/vectors/index.js';
+import { scale } from '../src/theme/responsive.js';
 import { PiiScoreBreakdownCard } from '../src/components/profile/index.js';
 import {
   getPharmacyTierTheme,
@@ -176,6 +184,101 @@ describe('OneRetail Wallet & Impact Index Module', () => {
           renderer.unmount();
         });
       }
+    }
+  }, 30000);
+
+  it('renders withdrawal method cards with enlarged 48px MetricIconDisc, 28x28 SVG icons, and theme contrast in light and dark modes', async () => {
+    for (const mode of ['light', 'dark']) {
+      const onSelectMethod = jest.fn();
+      let renderer;
+
+      await ReactTestRenderer.act(async () => {
+        renderer = ReactTestRenderer.create(
+          <ThemeProvider initialMode={mode}>
+            <SelectWithdrawMethodModal
+              visible={true}
+              selectedMethod="bank"
+              onClose={() => {}}
+              onSelectMethod={onSelectMethod}
+            />
+            <CashoutWithdrawModal visible={true} onClose={() => {}} />
+            <EnterWithdrawalAmountModal
+              visible={true}
+              minAmount="2,500"
+              onClose={() => {}}
+            />
+            <EarningTransactionCard
+              type="jazzcash"
+              title="JazzCash Transfer"
+              status="Paid"
+              date="14 Nov"
+              amount="8,500 Rs"
+            />
+            <EarningTransactionCard
+              type="easypaisa"
+              title="Easypaisa Payout"
+              status="Paid"
+              date="02 Nov"
+              amount="12,000 Rs"
+            />
+          </ThemeProvider>
+        );
+      });
+
+      const root = renderer.root;
+      const metricDiscs = root.findAllByType(MetricIconDisc.type || MetricIconDisc);
+      const bankVariantDiscs = metricDiscs.filter(
+        (d) => d.props.variant === 'bank' && d.props.size === scale(48)
+      );
+      expect(bankVariantDiscs.length).toBeGreaterThanOrEqual(6);
+
+      // Verify zero border/padding and exact 48x48 circular geometry on each withdrawal disc
+      const discViews = bankVariantDiscs[0].findAll((n) => n.type === 'View' && n.props?.style);
+      const flattenedDiscStyle = Object.assign(
+        {},
+        ...(Array.isArray(discViews[0]?.props?.style)
+          ? discViews[0].props.style.filter(Boolean)
+          : [discViews[0]?.props?.style])
+      );
+      expect(flattenedDiscStyle.width).toBe(scale(48));
+      expect(flattenedDiscStyle.height).toBe(scale(48));
+      expect(flattenedDiscStyle.borderRadius).toBe(scale(24));
+      expect(flattenedDiscStyle.borderWidth).toBe(0);
+      expect(flattenedDiscStyle.padding).toBe(0);
+
+      const jcIcons = root.findAllByType(JazzCashOfficialIcon);
+      const epIcons = root.findAllByType(EasypaisaOfficialIcon);
+      const bankIcons = root.findAllByType(BankOfficialIcon);
+
+      expect(jcIcons.some((i) => i.props.width === scale(28) && i.props.height === scale(28))).toBe(true);
+      expect(epIcons.some((i) => i.props.width === scale(28) && i.props.height === scale(28))).toBe(true);
+      expect(
+        bankIcons.some(
+          (i) =>
+            i.props.width === scale(28) &&
+            i.props.height === scale(28) &&
+            i.props.color === (mode === 'dark' ? '#FFFFFF' : '#0F4761')
+        )
+      ).toBe(true);
+
+      const easypaisaRow = root.findAll(
+        (node) =>
+          node.props?.accessibilityRole === 'radio' &&
+          typeof node.props?.accessibilityLabel === 'string' &&
+          node.props.accessibilityLabel.startsWith('Easypaisa,')
+      )[0];
+      expect(easypaisaRow).toBeDefined();
+
+      await ReactTestRenderer.act(async () => {
+        easypaisaRow.props.onPress();
+      });
+      expect(onSelectMethod).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'easypaisa', name: 'Easypaisa' })
+      );
+
+      await ReactTestRenderer.act(async () => {
+        renderer.unmount();
+      });
     }
   }, 30000);
 });

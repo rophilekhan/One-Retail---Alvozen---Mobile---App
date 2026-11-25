@@ -62,7 +62,7 @@ export const HomeOperationalActions = () => {
                 <AppText variant="titleMedium" colorType="primary" style={styles.actionTitle}>
                   Scan Prescription QR
                 </AppText>
-                <AppBadge label="+10 Pts" variant="accent" size="sm" />
+                <AppBadge label="+10 Pts" variant="accent" size="sm" isMono={true} />
               </View>
               <AppText variant="caption" colorType="muted" style={{ marginTop: 2 }}>
                 Validate patient digital Rx, generic mapping & reciprocal stocks
@@ -97,7 +97,7 @@ export const HomeOperationalActions = () => {
                   <AppText variant="titleMedium" colorType="primary" style={styles.actionTitle}>
                     Upload Closing Data
                   </AppText>
-                  <AppBadge label="+10 Pts" variant="brand" size="sm" />
+                  <AppBadge label="+10 Pts" variant="brand" size="sm" isMono={true} />
                 </View>
                 <AppText variant="caption" colorType="muted" style={{ marginTop: 2 }}>
                   Manual pharmacy off-take sync (CSV / Excel format)

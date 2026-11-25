@@ -3,13 +3,14 @@ import {
   View,
   StyleSheet,
   TouchableOpacity,
-  Platform,
   ActivityIndicator,
   Animated,
   ScrollView,
-  Dimensions,
+  useWindowDimensions,
+  Alert,
+  Linking,
 } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { PROVIDER_GOOGLE } from 'react-native-maps';
 import Geolocation from '@react-native-community/geolocation';
 import { useTheme } from '../../theme/index.js';
 import { scale, verticalScale, moderateScale, scaleFont } from '../../theme/responsive.js';
@@ -20,13 +21,14 @@ import {
   AppInput,
   AppModal,
   AppToast,
-  GlassCard,
   MetricIconDisc,
 } from '../core/index.js';
 import {
+  DARK_MAP_STYLE,
+  DEFAULT_COORDINATES,
   reverseGeocode,
   searchPlacesOrAddress,
-  requestLocationPermission,
+  requestLocationPermissionStatus,
   isCoordinatesString,
   parseCoordinatesString,
 } from '../../services/geocodingService.js';
@@ -37,25 +39,13 @@ import {
   CloseIcon,
 } from '../../assets/vectors/AuthIcons.jsx';
 
-const DARK_MAP_STYLE = [
-  { elementType: 'geometry', stylers: [{ color: '#131B24' }] },
-  { elementType: 'labels.text.fill', stylers: [{ color: '#8898AA' }] },
-  { elementType: 'labels.text.stroke', stylers: [{ color: '#0F161E' }] },
-  { featureType: 'administrative.country', elementType: 'geometry.stroke', stylers: [{ color: '#2B394A' }] },
-  { featureType: 'administrative.province', elementType: 'geometry.stroke', stylers: [{ color: '#2B394A' }] },
-  { featureType: 'landscape.natural', elementType: 'geometry', stylers: [{ color: '#0D141C' }] },
-  { featureType: 'poi', elementType: 'geometry', stylers: [{ color: '#1C2735' }] },
-  { featureType: 'poi', elementType: 'labels.text.fill', stylers: [{ color: '#5C748D' }] },
-  { featureType: 'poi.park', elementType: 'geometry.fill', stylers: [{ color: '#102636' }] },
-  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#243346' }] },
-  { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#7E91A6' }] },
-  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#1A5360' }] },
-  { featureType: 'road.highway', elementType: 'geometry.stroke', stylers: [{ color: '#123D47' }] },
-  { featureType: 'road.highway', elementType: 'labels.text.fill', stylers: [{ color: '#8BE4ED' }] },
-  { featureType: 'transit', elementType: 'labels.text.fill', stylers: [{ color: '#7E91A6' }] },
-  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#091018' }] },
-  { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#3E566E' }] },
-];
+const parseFiniteCoord = (value) => {
+  if (value === null || value === undefined || value === '' || typeof value === 'boolean') {
+    return NaN;
+  }
+  const num = Number(value);
+  return Number.isFinite(num) ? num : NaN;
+};
 
 /**
  * PharmacyLocationPickerModal
@@ -82,25 +72,23 @@ export const PharmacyLocationPickerModal = ({
   selectedAddress,
   selectedCoordinates,
 }) => {
-  const { colors, isDark, radii, typography } = useTheme();
+  const { colors, isDark, typography } = useTheme();
+  const { height: windowHeight } = useWindowDimensions();
+  const mapHeight = Math.round(windowHeight * 0.56);
   const mapRef = useRef(null);
+  const isMapReadyRef = useRef(false);
 
-  // Parse initial coordinates
+  // Parse initial coordinates with finite coercion
   const parsedCoords = isCoordinatesString(selectedAddress)
     ? parseCoordinatesString(selectedAddress)
     : null;
 
-  const hasExplicitCoords = Boolean(
-    (selectedCoordinates?.latitude && selectedCoordinates?.longitude) ||
-    (parsedCoords?.latitude && parsedCoords?.longitude)
-  );
+  const explicitLat = parseFiniteCoord(selectedCoordinates?.latitude ?? parsedCoords?.latitude);
+  const explicitLng = parseFiniteCoord(selectedCoordinates?.longitude ?? parsedCoords?.longitude);
+  const hasExplicitCoords = Number.isFinite(explicitLat) && Number.isFinite(explicitLng);
 
-  const initialLat = hasExplicitCoords
-    ? Number(selectedCoordinates?.latitude || parsedCoords?.latitude)
-    : 31.5204;
-  const initialLng = hasExplicitCoords
-    ? Number(selectedCoordinates?.longitude || parsedCoords?.longitude)
-    : 74.3587;
+  const initialLat = hasExplicitCoords ? explicitLat : DEFAULT_COORDINATES.latitude;
+  const initialLng = hasExplicitCoords ? explicitLng : DEFAULT_COORDINATES.longitude;
 
   const [currentCoords, setCurrentCoords] = useState({
     latitude: initialLat,
@@ -110,7 +98,7 @@ export const PharmacyLocationPickerModal = ({
   const [currentAddress, setCurrentAddress] = useState(
     selectedAddress && !isCoordinatesString(selectedAddress) && selectedAddress !== 'Locating address...'
       ? selectedAddress
-      : 'Main Boulevard, Gulberg III, Lahore'
+      : 'Saddar Town, Karachi'
   );
 
   const [currentArea, setCurrentArea] = useState('');
@@ -119,8 +107,8 @@ export const PharmacyLocationPickerModal = ({
   const [region, setRegion] = useState({
     latitude: initialLat,
     longitude: initialLng,
-    latitudeDelta: 0.005,
-    longitudeDelta: 0.005,
+    latitudeDelta: DEFAULT_COORDINATES.latitudeDelta,
+    longitudeDelta: DEFAULT_COORDINATES.longitudeDelta,
   });
 
   const [isFetching, setIsFetching] = useState(false);
@@ -134,6 +122,13 @@ export const PharmacyLocationPickerModal = ({
   const debounceTimerRef = useRef(null);
   const searchDebounceRef = useRef(null);
 
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    };
+  }, []);
+
   // Animate pin lift
   const animatePinLift = (lifting) => {
     Animated.spring(pinLiftAnim, {
@@ -144,57 +139,94 @@ export const PharmacyLocationPickerModal = ({
     }).start();
   };
 
-  const fetchAddressFromCoordinates = async (latitude, longitude) => {
+  const fetchAddressFromCoordinates = useCallback(async (latitude, longitude) => {
+    const lat = parseFiniteCoord(latitude);
+    const lng = parseFiniteCoord(longitude);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
     setIsFetching(true);
     try {
-      const geoResult = await reverseGeocode(latitude, longitude);
+      const geoResult = await reverseGeocode(lat, lng);
       if (geoResult?.formattedAddress) {
         setCurrentAddress(geoResult.formattedAddress);
         setCurrentArea(geoResult.area || '');
         setCurrentCity(geoResult.city || '');
       } else {
-        setCurrentAddress(`${latitude.toFixed(5)}, ${longitude.toFixed(5)}`);
+        setCurrentAddress(`${lat.toFixed(5)}, ${lng.toFixed(5)}`);
       }
     } catch {
-      setCurrentAddress(`${latitude.toFixed(5)}, ${longitude.toFixed(5)}`);
+      setCurrentAddress(`${lat.toFixed(5)}, ${lng.toFixed(5)}`);
     } finally {
       setIsFetching(false);
     }
-  };
+  }, []);
 
-  const applyLocation = (latitude, longitude, shouldReverseGeocode = true) => {
-    const coords = { latitude: Number(latitude), longitude: Number(longitude) };
+  const applyLocation = useCallback((latitude, longitude, shouldReverseGeocode = true) => {
+    const lat = parseFiniteCoord(latitude);
+    const lng = parseFiniteCoord(longitude);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+    const coords = { latitude: lat, longitude: lng };
     const targetRegion = {
       ...coords,
-      latitudeDelta: 0.005,
-      longitudeDelta: 0.005,
+      latitudeDelta: DEFAULT_COORDINATES.latitudeDelta,
+      longitudeDelta: DEFAULT_COORDINATES.longitudeDelta,
     };
     setCurrentCoords(coords);
     setRegion(targetRegion);
 
-    if (mapRef.current?.animateToRegion) {
-      mapRef.current.animateToRegion(targetRegion, 700);
+    if (isMapReadyRef.current && mapRef.current?.animateToRegion) {
+      mapRef.current.animateToRegion(targetRegion, 300);
     }
 
     if (shouldReverseGeocode) {
       fetchAddressFromCoordinates(coords.latitude, coords.longitude);
     }
-  };
+  }, [fetchAddressFromCoordinates]);
+
+  const handleMapReady = useCallback(() => {
+    isMapReadyRef.current = true;
+    const lat = parseFiniteCoord(currentCoords?.latitude);
+    const lng = parseFiniteCoord(currentCoords?.longitude);
+    const targetRegion = {
+      latitude: Number.isFinite(lat) ? lat : DEFAULT_COORDINATES.latitude,
+      longitude: Number.isFinite(lng) ? lng : DEFAULT_COORDINATES.longitude,
+      latitudeDelta: DEFAULT_COORDINATES.latitudeDelta,
+      longitudeDelta: DEFAULT_COORDINATES.longitudeDelta,
+    };
+    if (mapRef.current?.animateToRegion) {
+      mapRef.current.animateToRegion(targetRegion, 300);
+    }
+  }, [currentCoords]);
 
   // Current GPS location trigger
-  const handleCurrentLocation = async (isAuto = false) => {
+  const handleCurrentLocation = useCallback(async (isAuto = false) => {
     try {
       setIsFetching(true);
-      const hasPermission = await requestLocationPermission();
+      const { granted, status } = await requestLocationPermissionStatus();
 
-      if (!hasPermission) {
+      if (!granted) {
         setIsFetching(false);
         if (!isAuto) {
-          AppToast.show({
-            title: 'Location Permission Required',
-            message: 'Please enable GPS location permission in device settings to pin automatically.',
-            type: 'error',
-          });
+          if (status === 'blocked') {
+            Alert.alert(
+              'Location Permission Blocked',
+              'Enable Location permission in device Settings to detect your pharmacy GPS position.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Open Settings',
+                  onPress: () => Linking.openSettings().catch(() => { }),
+                },
+              ]
+            );
+          } else {
+            AppToast.show({
+              title: 'Location Permission Required',
+              message: 'Please allow GPS location permission to pin automatically.',
+              type: 'error',
+            });
+          }
         }
         return;
       }
@@ -205,8 +237,13 @@ export const PharmacyLocationPickerModal = ({
             setIsFetching(false);
             return;
           }
-          const { latitude, longitude } = position.coords;
-          applyLocation(latitude, longitude, true);
+          const lat = parseFiniteCoord(position.coords.latitude);
+          const lng = parseFiniteCoord(position.coords.longitude);
+          if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+            setIsFetching(false);
+            return;
+          }
+          applyLocation(lat, lng, true);
         },
         (error) => {
           setIsFetching(false);
@@ -218,20 +255,23 @@ export const PharmacyLocationPickerModal = ({
             });
           }
         },
-        { enableHighAccuracy: false, timeout: 15000, maximumAge: 10000 }
+        { enableHighAccuracy: false, timeout: 10000, maximumAge: 30000 }
       );
     } catch {
       setIsFetching(false);
     }
-  };
+  }, [applyLocation]);
 
-  // Reset/sync on modal open
+  const wasVisibleRef = useRef(false);
+
+  // Reset/sync on modal open transitions
   useEffect(() => {
-    if (visible) {
-      if (selectedCoordinates?.latitude && selectedCoordinates?.longitude) {
-        const lat = Number(selectedCoordinates.latitude);
-        const lng = Number(selectedCoordinates.longitude);
-        applyLocation(lat, lng, !selectedAddress || isCoordinatesString(selectedAddress));
+    if (visible && !wasVisibleRef.current) {
+      wasVisibleRef.current = true;
+      const selLat = parseFiniteCoord(selectedCoordinates?.latitude);
+      const selLng = parseFiniteCoord(selectedCoordinates?.longitude);
+      if (Number.isFinite(selLat) && Number.isFinite(selLng)) {
+        applyLocation(selLat, selLng, !selectedAddress || isCoordinatesString(selectedAddress));
         if (selectedAddress && !isCoordinatesString(selectedAddress)) {
           setCurrentAddress(selectedAddress);
         }
@@ -245,8 +285,18 @@ export const PharmacyLocationPickerModal = ({
       } else {
         handleCurrentLocation(true);
       }
+    } else if (!visible) {
+      wasVisibleRef.current = false;
+      isMapReadyRef.current = false;
     }
-  }, [visible]);
+  }, [
+    visible,
+    selectedAddress,
+    selectedCoordinates?.latitude,
+    selectedCoordinates?.longitude,
+    applyLocation,
+    handleCurrentLocation,
+  ]);
 
   // Handle region change during pan
   const handleRegionChange = () => {
@@ -260,10 +310,14 @@ export const PharmacyLocationPickerModal = ({
   const handleRegionChangeComplete = (newRegion) => {
     setIsDragging(false);
     animatePinLift(false);
+    const lat = parseFiniteCoord(newRegion?.latitude);
+    const lng = parseFiniteCoord(newRegion?.longitude);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
     setRegion(newRegion);
     setCurrentCoords({
-      latitude: newRegion.latitude,
-      longitude: newRegion.longitude,
+      latitude: lat,
+      longitude: lng,
     });
 
     if (debounceTimerRef.current) {
@@ -271,7 +325,7 @@ export const PharmacyLocationPickerModal = ({
     }
 
     debounceTimerRef.current = setTimeout(() => {
-      fetchAddressFromCoordinates(newRegion.latitude, newRegion.longitude);
+      fetchAddressFromCoordinates(lat, lng);
     }, 400);
   };
 
@@ -337,6 +391,9 @@ export const PharmacyLocationPickerModal = ({
     outputRange: [0.35, 0.12],
   });
 
+  const mapContainerStyle = [styles.mapCanvasHolder, { height: mapHeight }];
+  const mapStyle = { width: '100%', height: mapHeight };
+
   return (
     <AppModal
       visible={visible}
@@ -344,8 +401,7 @@ export const PharmacyLocationPickerModal = ({
       type="bottomSheet"
       title="Pin Pharmacy Location"
       style={{
-        backgroundColor: colors.surface?.sheet || (isDark ? '#0A0A0C' : '#FFFFFF'),
-        height: '82%',
+        backgroundColor: colors.surface?.sheet || colors.surface?.card,
       }}
     >
       <View style={styles.modalRoot}>
@@ -355,9 +411,9 @@ export const PharmacyLocationPickerModal = ({
             style={[
               styles.searchBarGlass,
               {
-                backgroundColor: isDark ? 'rgba(15, 23, 30, 0.94)' : 'rgba(255, 255, 255, 0.96)',
-                borderColor: isDark ? 'rgba(255, 255, 255, 0.14)' : 'rgba(0, 0, 0, 0.08)',
-                shadowColor: isDark ? '#000000' : (colors.surface?.inputShadow || '#6FB4C2'),
+                backgroundColor: colors.surface?.cardElevated || colors.surface?.card,
+                borderColor: colors.border?.card || colors.border?.subtle,
+                shadowColor: isDark ? colors.camera?.shadow : colors.surface?.inputShadow,
               },
             ]}
           >
@@ -391,9 +447,9 @@ export const PharmacyLocationPickerModal = ({
               style={[
                 styles.searchResultsCard,
                 {
-                  backgroundColor: isDark ? '#141E28' : '#FFFFFF',
-                  borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)',
-                  shadowColor: isDark ? '#000000' : '#6FB4C2',
+                  backgroundColor: isDark ? colors.surface?.sheetElevated : colors.surface?.card,
+                  borderColor: colors.border?.card || colors.border?.subtle,
+                  shadowColor: isDark ? colors.camera?.shadow : colors.surface?.inputShadow,
                 },
               ]}
             >
@@ -412,7 +468,7 @@ export const PharmacyLocationPickerModal = ({
                       styles.searchResultItem,
                       idx < searchResults.length - 1 && {
                         borderBottomWidth: 1,
-                        borderBottomColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.05)',
+                        borderBottomColor: colors.surface?.divider || colors.border?.subtle,
                       },
                     ]}
                   >
@@ -442,16 +498,17 @@ export const PharmacyLocationPickerModal = ({
           )}
         </View>
 
-        {/* Map Canvas Holder */}
-        <View style={styles.mapCanvasHolder}>
+        {/* Map Canvas Holder with Explicit Pixel Height for Android Modals */}
+        <View style={mapContainerStyle}>
           <MapView
             ref={mapRef}
             provider={PROVIDER_GOOGLE}
-            style={StyleSheet.absoluteFillObject}
+            style={mapStyle}
             initialRegion={region}
             customMapStyle={isDark ? DARK_MAP_STYLE : []}
             showsUserLocation={true}
             showsMyLocationButton={false}
+            onMapReady={handleMapReady}
             onRegionChange={handleRegionChange}
             onRegionChangeComplete={handleRegionChangeComplete}
           />
@@ -471,7 +528,10 @@ export const PharmacyLocationPickerModal = ({
               <AppText
                 style={[
                   styles.pinTooltipText,
-                  { fontFamily: fontFamilies.primaryMedium },
+                  {
+                    color: colors.cta?.sliderKnob || colors.surface?.button,
+                    fontFamily: fontFamilies.primaryMedium,
+                  },
                 ]}
               >
                 {isFetching ? 'Locating address...' : 'Pharmacy Pin'}
@@ -498,6 +558,7 @@ export const PharmacyLocationPickerModal = ({
               style={[
                 styles.pinGroundShadow,
                 {
+                  backgroundColor: colors.camera?.shadow || colors.surface?.tooltip,
                   transform: [{ scaleX: shadowScale }, { scaleY: shadowScale }],
                   opacity: shadowOpacity,
                 },
@@ -510,9 +571,9 @@ export const PharmacyLocationPickerModal = ({
             style={[
               styles.fabGpsButton,
               {
-                backgroundColor: isDark ? 'rgba(15, 23, 30, 0.92)' : 'rgba(255, 255, 255, 0.96)',
-                borderColor: isDark ? 'rgba(255, 255, 255, 0.14)' : 'rgba(0, 0, 0, 0.08)',
-                shadowColor: isDark ? '#000000' : (colors.surface?.inputShadow || '#6FB4C2'),
+                backgroundColor: colors.surface?.cardElevated || colors.surface?.card,
+                borderColor: colors.border?.card || colors.border?.subtle,
+                shadowColor: isDark ? colors.camera?.shadow : colors.surface?.inputShadow,
               },
             ]}
             activeOpacity={0.85}
@@ -530,13 +591,13 @@ export const PharmacyLocationPickerModal = ({
             style={[
               styles.resolvedAddressCard,
               {
-                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#F0F9FA',
-                borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 155, 169, 0.15)',
+                backgroundColor: isDark ? colors.glass?.primary : colors.surface?.iconBg,
+                borderColor: isDark ? colors.border?.card : colors.border?.pointsBadge,
               },
             ]}
           >
             <MetricIconDisc variant="teal" size={scale(36)} marginRight={scale(10)}>
-              <MapPinIcon size={scale(18)} color="#FFFFFF" />
+              <MapPinIcon size={scale(18)} />
             </MetricIconDisc>
             <View style={{ flex: 1 }}>
               <AppText
@@ -573,7 +634,6 @@ export const PharmacyLocationPickerModal = ({
 
 const styles = StyleSheet.create({
   modalRoot: {
-    flex: 1,
     position: 'relative',
     width: '100%',
   },
@@ -619,7 +679,6 @@ const styles = StyleSheet.create({
     paddingVertical: verticalScale(10),
   },
   mapCanvasHolder: {
-    flex: 1,
     width: '100%',
     borderRadius: moderateScale(20),
     overflow: 'hidden',
@@ -645,7 +704,6 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   pinTooltipText: {
-    color: '#FFFFFF',
     fontSize: scaleFont(11),
     fontWeight: '600',
   },
@@ -663,7 +721,6 @@ const styles = StyleSheet.create({
     width: scale(18),
     height: verticalScale(6),
     borderRadius: scale(9),
-    backgroundColor: '#000000',
     marginTop: -verticalScale(4),
   },
   fabGpsButton: {

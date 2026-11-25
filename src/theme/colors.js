@@ -109,6 +109,8 @@ export const lightColors = {
     // ── Added from AddDosageScreen ───────────────────────────
     available: '#49C88F',
     availableBg: 'rgba(73, 200, 143, 0.1)',
+    errorBg: 'rgba(255, 75, 75, 0.12)',
+    accentBg: 'rgba(251, 107, 3, 0.12)',
   },
   gradient: {
     builderTop: ['#E2F1F8', '#ffffff'],
@@ -535,6 +537,8 @@ export const darkColors = {
     // ── Added from AddDosageScreen ───────────────────────────
     available: '#49C88F',
     availableBg: 'rgba(73, 200, 143, 0.15)',
+    errorBg: 'rgba(255, 75, 75, 0.2)',
+    accentBg: 'rgba(251, 107, 3, 0.12)',
   },
   gradient: {
     builderTop: ['#1B263B', '#000000'],

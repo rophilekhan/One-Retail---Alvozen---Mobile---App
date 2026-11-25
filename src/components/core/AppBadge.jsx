@@ -74,6 +74,10 @@ export const AppBadge = ({
 
   const currentColors = getBadgeColors();
   const isSmall = size === 'sm';
+  const safeLabel =
+    label && typeof label === 'object' && !React.isValidElement(label)
+      ? label.name ?? label.label ?? label.title ?? label.number ?? ''
+      : label;
 
   return (
     <View
@@ -92,17 +96,19 @@ export const AppBadge = ({
       {icon && <View style={styles.icon}>{icon}</View>}
       <AppText
         variant="badge"
+        isMono={isMono}
         style={[
           styles.text,
           {
             color: currentColors.text,
             fontFamily: isMono ? fontFamilies.monoMedium : fontFamilies.primaryMedium,
+            ...(isMono ? { fontVariant: ['tabular-nums'] } : null),
           },
           isSmall && { fontSize: scale(9), lineHeight: scale(11) },
           textStyle,
         ]}
       >
-        {label}
+        {safeLabel}
       </AppText>
     </View>
   );

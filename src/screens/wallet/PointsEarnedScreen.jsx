@@ -265,12 +265,14 @@ const styles = StyleSheet.create({
   scoreNumberMono: {
     fontSize: scaleFont(44),
     fontFamily: fontFamilies.mono,
-    fontWeight: '700',
+    fontWeight: '400',
+    fontVariant: ['tabular-nums'],
     letterSpacing: -1,
   },
   scorePtsLabel: {
     fontSize: scaleFont(16),
     fontFamily: fontFamilies.mono,
+    fontVariant: ['tabular-nums'],
     marginLeft: scale(4),
   },
   currencyBadge: {
@@ -280,8 +282,9 @@ const styles = StyleSheet.create({
   },
   currencyBadgeText: {
     fontSize: scaleFont(13),
-    fontFamily: fontFamilies.mono,
-    fontWeight: '700',
+    fontFamily: fontFamilies.monoMedium,
+    fontWeight: '500',
+    fontVariant: ['tabular-nums'],
   },
   sectionHeader: {
     marginBottom: verticalScale(12),

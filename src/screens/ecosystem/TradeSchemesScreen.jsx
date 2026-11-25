@@ -293,7 +293,7 @@ export const TradeSchemesScreen = ({ navigation }) => {
         />
       </GlassCard>
     ),
-    [colors, isDark, spacing, radii, typography, fontFamilies, searchQuery, handleResetFilters]
+    [colors, isDark, spacing, searchQuery, handleResetFilters]
   );
 
   return (
@@ -535,7 +535,10 @@ export const TradeSchemesScreen = ({ navigation }) => {
                 <AppText
                   style={[
                     styles.modalRowValue,
-                    { color: colors.text?.primary || (isDark ? '#FFFFFF' : '#020202') },
+                    {
+                      color: colors.text?.primary || (isDark ? '#FFFFFF' : '#020202'),
+                      fontFamily: fontFamilies.primaryMedium,
+                    },
                   ]}
                 >
                   {selectedScheme.distributor}
@@ -664,7 +667,8 @@ const styles = StyleSheet.create({
   modalRowValue: {
     fontSize: scaleFont(12.5),
     fontFamily: fontFamilies.monoMedium,
-    fontWeight: '600',
+    fontWeight: '500',
+    fontVariant: ['tabular-nums'],
   },
   modalTermsBox: {
     marginTop: verticalScale(12),
